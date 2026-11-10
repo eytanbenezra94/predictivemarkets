@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import Optional
@@ -42,12 +43,36 @@ def dates_compatible(d1: Optional[str], d2: Optional[str], max_days: float = 2.0
 
 
 def match_markets(
-    left: list[Quote], right: list[Quote], threshold: float = 0.75
+    left: list[Quote],
+    right: list[Quote],
+    threshold: float = 0.75,
+    min_shared: int = 2,
+    max_df: int = 300,
 ) -> list[tuple[Quote, Quote, float]]:
-    """Greedy one-to-one matching, best scores first. Returns (left, right, score)."""
+    """Greedy one-to-one matching, best scores first. Returns (left, right, score).
+
+    Candidate pairs come from an inverted index on title tokens (at least `min_shared` shared
+    tokens, ignoring tokens present in more than `max_df` right titles), so the cost stays
+    far below comparing every pair.
+    """
+    rtoks = [set(_tokens(r.title)) for r in right]
+    index: dict[str, list[int]] = defaultdict(list)
+    for j, toks in enumerate(rtoks):
+        for t in toks:
+            index[t].append(j)
     scored = []
     for i, l in enumerate(left):
-        for j, r in enumerate(right):
+        ltoks = set(_tokens(l.title))
+        shared: Counter = Counter()
+        for t in ltoks:
+            postings = index.get(t, ())
+            if len(postings) > max_df:
+                continue
+            shared.update(postings)
+        for j, c in shared.items():
+            if c < min(min_shared, len(ltoks), len(rtoks[j])):
+                continue
+            r = right[j]
             if not dates_compatible(l.end_date, r.end_date):
                 continue
             s = similarity(l.title, r.title)

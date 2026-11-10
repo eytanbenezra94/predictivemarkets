@@ -83,6 +83,10 @@ Regression tests built from real payloads live in `tests/fixtures/` (26 tests in
 - **Whether `bestBid` / `bestAsk` match the CLOB book.** Gamma values are a snapshot and may lag.
 - **Kalshi fees.** `0.07 * p * (1 - p)` is an assumption without the round-up to the next cent.
 
+## Next: measure how long gaps last
+
+`scripts/log_arb.py` and `scripts/analyze_log.py` answer the open question about time dynamics. They are tested on simulated data only: the first live run will be the real test of the whole pipeline, including cross-venue matching on real titles.
+
 ## Reproduce locally
 
 ```bash

@@ -10,6 +10,7 @@ Every binary contract settles at **$1 or $0**, so prices behave like probabiliti
 |---|---|---|---|
 | 1 | **Intra-market arbitrage** | Do the outcome prices of one market or event add up to $1? | `scripts/scan_intra.py` |
 | 2 | **Cross-venue arbitrage** | Is the same event priced differently on Polymarket and Kalshi? | `scripts/scan_cross.py` |
+| 3 | **Opportunity logger** | How often do apparent arbitrages appear and **how long do they last**? | `scripts/log_arb.py`, `scripts/analyze_log.py` |
 
 ## Quick start
 
@@ -19,10 +20,14 @@ cd predictivemarkets
 pip install -r requirements.txt
 
 python examples/demo_offline.py        # no network: hand-checkable examples
-pytest -q                              # 26 unit tests, no network
+pytest -q                              # 31 unit tests, no network
 
 python scripts/scan_intra.py --slippage 0.005 --min-profit 0.002
 python scripts/scan_cross.py --threshold 0.75 --slippage 0.005
+
+# project 3: sample every minute, then measure how long gaps last
+python scripts/log_arb.py --interval 60 --pages 2          # Ctrl-C to stop
+python scripts/analyze_log.py --interval 60
 ```
 
 Requires Python 3.9+ (tested on 3.13).
@@ -65,6 +70,19 @@ cross_venue: profit/set $0.0227, ROI 2.32%
 
 A 5 cent gap shrinks to about 1.5 cents after fees on a single market, which is the typical order of magnitude of these edges.
 
+## Opportunity logger
+
+A gap that exists for two seconds cannot be traded by hand. The logger samples both venues every `--interval` seconds, runs every scanner (intra-market on both venues plus cross-venue) and appends to two CSV files in `data/` (git-ignored):
+
+| File | Content |
+|---|---|
+| `data/opportunities.csv` | one row per opportunity per cycle: timestamp, stable key (hash of the legs), kind, profit per set, ROI, legs |
+| `data/cycles.csv` | one row per cycle: number of quotes per venue and number of opportunities (the denominator) |
+
+`analyze_log.py` groups consecutive sightings of the same legs into **episodes** (a gap of more than 2.5 intervals ends an episode) and reports the share of cycles with an opportunity, episode durations (a lower bound: one sighting counts as one interval), the share seen only once, and the best episodes. An episode seen once lasted less than the interval.
+
+A failed request skips the cycle instead of stopping the logger. Keep the interval at 30 s or more: each cycle makes a handful of public requests per venue.
+
 ## Use it as a library
 
 ```python
@@ -98,8 +116,9 @@ pm_arb/
   arb.py        pure arbitrage logic, no network
   matching.py   title + end-date matching across venues
   clients.py    Polymarket Gamma and Kalshi public endpoints + parsers
-  scan.py       scanners combining clients and logic
-scripts/        command-line scanners
+  scan.py       scanners combining clients and logic, plus `run_cycle`
+  tracking.py   CSV logging, episodes and duration statistics
+scripts/        command-line scanners, logger and log analysis
 examples/       offline demo on synthetic quotes
 tests/          unit tests + fixtures from real API responses
 docs/           theory, architecture, data sources
@@ -128,7 +147,7 @@ docs/           theory, architecture, data sources
 ## Roadmap
 
 - [ ] Order-book depth and size-weighted fills
-- [ ] Snapshot logging and opportunity half-life
+- [x] Snapshot logging and opportunity duration (`log_arb.py`, `analyze_log.py`): written and tested on simulated data, **not yet run on live data**
 - [ ] Calibration analysis (Brier score, reliability diagram) on resolved markets
 - [ ] Kelly sizing against a model probability
 

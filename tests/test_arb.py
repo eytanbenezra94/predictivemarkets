@@ -221,3 +221,61 @@ def test_kalshi_event_level_title_gets_the_outcome_appended():
     q = parse_kalshi_market({"ticker": "KXGDPYEAR-36-B0.3", "title": "GDP growth in 2036?", "yes_sub_title": "0.1% to 0.5%",
                              "status": "active", "yes_bid_dollars": "0.0100", "yes_ask_dollars": "0.0300"})
     assert q.title == "GDP growth in 2036? [0.1% to 0.5%]"
+
+
+# ----------------------------------------------------------------------------- logger / tracking
+from pm_arb import tracking  # noqa: E402
+from pm_arb.scan import run_cycle  # noqa: E402
+
+
+def _opp(profit=0.03, venue="k", mid="m1"):
+    return binary_buy(q(venue, mid, "Will X?", yes_ask=0.5 - profit / 2, no_ask=0.5 - profit / 2))
+
+
+def test_opp_key_is_stable_and_leg_based():
+    assert tracking.opp_key(_opp(0.03)) == tracking.opp_key(_opp(0.05))  # same legs, different prices
+    assert tracking.opp_key(_opp(mid="m1")) != tracking.opp_key(_opp(mid="m2"))
+
+
+def test_episodes_split_on_gaps_and_measure_duration():
+    key_rows = lambda ts, p=0.03: tracking.to_rows([_opp(p)], ts)  # noqa: E731
+    rows = key_rows(0) + key_rows(60) + key_rows(120, 0.05) + key_rows(1000)  # 3 sightings, a gap, 1 sighting
+    eps = tracking.episodes(rows, interval=60)
+    assert len(eps) == 2
+    long_ep = max(eps, key=lambda e: e.observations)
+    assert long_ep.observations == 3 and long_ep.start == 0 and long_ep.end == 120
+    assert long_ep.duration == 180  # 120 + one interval
+    assert long_ep.max_profit == pytest.approx(0.05)
+    short_ep = min(eps, key=lambda e: e.observations)
+    assert short_ep.duration == 60 and short_ep.observations == 1
+
+
+def test_summarize_with_cycles():
+    rows = tracking.to_rows([_opp()], 0) + tracking.to_rows([_opp()], 60)
+    cycles = [{"ts": 0, "n_opportunities": 1}, {"ts": 60, "n_opportunities": 1}, {"ts": 120, "n_opportunities": 0}]
+    s = tracking.summarize(tracking.episodes(rows, 60), 60, cycles)
+    assert s["episodes"] == 1 and s["cycles"] == 3
+    assert s["cycles_with_opportunity_share"] == pytest.approx(2 / 3)
+    assert tracking.summarize([], 60)["median_duration_s"] is None
+
+
+def test_csv_roundtrip(tmp_path):
+    path = str(tmp_path / "sub" / "opps.csv")
+    tracking.append_opportunities(path, tracking.to_rows([_opp()], 100))
+    tracking.append_opportunities(path, tracking.to_rows([_opp()], 160))  # header written once
+    rows = tracking.read_csv(path)
+    assert [r["ts"] for r in rows] == ["100", "160"]
+    assert tracking.read_csv(str(tmp_path / "missing.csv")) == []
+
+
+def test_run_cycle_end_to_end_on_synthetic_data():
+    pm_event = {"negRisk": True, "markets": [_pm_mk(1, 0.38, 0.40), _pm_mk(2, 0.28, 0.30), _pm_mk(3, 0.25, 0.27)]}
+    kal_a = parse_kalshi_market({"ticker": "K1", "title": "Fed cuts rates in December 2026", "status": "active",
+                                 "yes_bid_dollars": "0.5900", "yes_ask_dollars": "0.6000", "no_bid_dollars": "0.4000", "no_ask_dollars": "0.4100"})
+    pm_cross = {"id": "p1", "question": "Will the Fed cut rates in December 2026?", "outcomes": '["Yes","No"]',
+                "bestBid": 0.20, "bestAsk": 0.30, "active": True, "closed": False, "acceptingOrders": True}
+    opps, n_poly, n_kal = run_cycle([pm_event, {"markets": [pm_cross]}], [kal_a], [], slippage=0.0, threshold=0.6)
+    assert n_poly == 4 and n_kal == 1
+    kinds = sorted(o.kind for o in opps)
+    assert "cross_venue" in kinds  # YES@poly 0.30 + NO@kalshi 0.41 = 0.71 -> large synthetic gap
+    assert "basket_buy" in kinds   # the non-augmented negRisk basket (sum 0.97)

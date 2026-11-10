@@ -86,6 +86,27 @@ def scan_intra_polymarket(
     return sorted(out, key=lambda o: o.profit_per_set, reverse=True)
 
 
+def run_cycle(
+    poly_events: list[dict],
+    kalshi_markets: list[Quote],
+    kalshi_events: list[dict],
+    slippage: float = 0.005,
+    threshold: float = 0.75,
+    include_unverified_buys: bool = False,
+) -> tuple[list[Opportunity], int, int]:
+    """One full scan on already-fetched data: intra-market on both venues plus cross-venue.
+
+    Returns (opportunities, number of Polymarket quotes, number of Kalshi quotes).
+    """
+    poly_quotes = [q for ev in poly_events for m in ev.get("markets", []) if (q := parse_polymarket_market(m))]
+    opps = scan_intra_kalshi(
+        kalshi_markets, kalshi_events, slippage=slippage, include_unverified_buys=include_unverified_buys
+    )
+    opps += scan_intra_polymarket(poly_events, slippage=slippage, include_unverified_buys=include_unverified_buys)
+    opps += [o for o, _ in scan_cross(poly_quotes, kalshi_markets, threshold, slippage=slippage)]
+    return opps, len(poly_quotes), len(kalshi_markets)
+
+
 def scan_cross(
     poly: list[Quote],
     kalshi: list[Quote],
