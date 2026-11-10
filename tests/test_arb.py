@@ -47,6 +47,8 @@ def test_basket_buy_caveat_when_not_exhaustive():
 def test_basket_sell():
     opp = basket_sell([("a", "A", 0.40), ("b", "B", 0.35), ("c", "C", 0.30)])
     assert opp.profit_per_set == pytest.approx(0.05)
+    # capital locked = N - proceeds = 3 - 1.05 (selling YES at b == buying NO at 1 - b)
+    assert opp.roi == pytest.approx(0.05 / 1.95)
     assert basket_sell([("a", "A", 0.40), ("b", "B", 0.30)]) is None
 
 

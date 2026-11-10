@@ -43,8 +43,11 @@ def basket_sell(
     """Sell one YES on every outcome of a mutually exclusive set (exhaustiveness not required).
 
     At most one leg pays $1, so the liability is at most $1 per set.
-    Profit (worst case) = sum(net proceeds) - 1. Capital at risk = 1 - proceeds collateral
-    is venue dependent; ROI is reported against the $1 maximum liability.
+    Profit (worst case) = proceeds - 1, where proceeds = sum(bid - slippage - fee).
+
+    Selling YES at bid b is economically buying NO at 1 - b, so the capital locked is
+    sum(1 - b_i + slippage + fee_i) = N - proceeds. ROI is reported against that capital
+    (venues that net collateral across a basket may require less).
     """
     if len(bids) < 2:
         return None
@@ -53,7 +56,8 @@ def basket_sell(
     profit = proceeds - 1.0
     if profit <= 0:
         return None
-    return Opportunity("basket_sell", f"Sell all {len(legs)} outcomes", legs, profit, profit / 1.0)
+    capital = len(legs) - proceeds
+    return Opportunity("basket_sell", f"Sell all {len(legs)} outcomes", legs, profit, profit / capital)
 
 
 def binary_buy(q: Quote, fee_fn: FeeFn = no_fee, slippage: float = 0.0) -> Optional[Opportunity]:
