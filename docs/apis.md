@@ -2,7 +2,7 @@
 
 Both sources are **public and read-only**. No API key, no trading.
 
-> **Status.** The parsers were written from each venue's public documentation and tested on synthetic payloads. They have not been validated against live responses. Before trusting any output, run a scanner and compare a few raw responses with what the parsers extract. Schemas evolve: update `clients.py` if a field is renamed.
+> **Status.** Both parsers were run against live responses on 2026-11-10 and corrected (see [`findings.md`](findings.md)). Regression fixtures are in `tests/fixtures/`. Schemas evolve: update `clients.py` if a field is renamed.
 
 ## Polymarket (Gamma API)
 
@@ -10,8 +10,7 @@ Base URL: `https://gamma-api.polymarket.com`
 
 | Endpoint | Used for | Notes |
 |---|---|---|
-| `GET /markets?active=true&closed=false&limit=&offset=` | binary markets for the cross-venue scan | paginated by `offset` |
-| `GET /events?active=true&closed=false&limit=&offset=` | multi-outcome baskets | each event has `markets` and a `negRisk` flag |
+| `GET /events?active=true&closed=false&order=volume24hr&ascending=false&limit=&offset=` | multi-outcome baskets, and binary markets (flattened) | paginated by `offset`; without `order` the first page is stale; each event has `markets`, `negRisk` and `negRiskAugmented` |
 
 Fields used per market:
 
@@ -23,9 +22,10 @@ Fields used per market:
 | `bestBid`, `bestAsk` | top of book for the YES token |
 | `endDate` | ISO 8601 end date |
 | `volume` / `volumeNum` | traded volume |
-| `closed`, `active` | closed or inactive markets are skipped |
+| `closed`, `active`, `acceptingOrders`, `enableOrderBook` | closed, inactive or non-accepting markets are skipped (11.5% of nested markets are closed) |
+| `feesEnabled`, `feeSchedule` | `{rate, exponent, rebateRate, takerOnly}`; used for the taker fee |
 
-`negRisk` events: exactly one outcome is meant to resolve YES, so the YES prices should sum to about 1. They can contain placeholder or "other" outcomes, so buy-side results carry an exhaustiveness warning.
+`negRisk` events: exactly one outcome is meant to resolve YES. `negRiskAugmented` events can receive new outcomes later, so their listed asks can sum to 0.97 with no arbitrage: buy-side is skipped for them. `bestBid` is often missing on open markets.
 
 ## Kalshi (trade API)
 
@@ -41,12 +41,13 @@ Fields used per market:
 | Field | Meaning |
 |---|---|
 | `ticker` | identifier |
-| `title` (fallback `yes_sub_title`) | title |
-| `yes_bid`, `yes_ask`, `no_bid`, `no_ask` | cents, or `*_dollars` strings in newer payloads (the `_dollars` field wins if present) |
+| `title` + `yes_sub_title` | event-level titles are shared by all markets of an event, so the sub-title is appended |
+| `yes_bid_dollars`, `yes_ask_dollars`, `no_bid_dollars`, `no_ask_dollars` | **dollar strings** (`"0.0400"`); `"0.0000"` and `"1.0000"` mean no quote. Cents fields are only a fallback |
 | `close_time` (fallback `expiration_time`) | end date |
-| `volume` | traded volume |
+| `volume_fp` | traded volume (fixed-point string) |
+| `status`, `mve_collection_ticker` | non-active markets and multivariate combo markets are skipped |
 
-`mutually_exclusive` does not imply exhaustive: buy-side basket results are flagged. Sell-side results only need mutual exclusivity.
+`mutually_exclusive` does **not** imply exhaustive (live example: asks summing to 0.315), so buy-side baskets are off by default. Sell-side results only need mutual exclusivity.
 
 ## Rate limiting and errors
 
@@ -56,7 +57,7 @@ Fields used per market:
 
 `fees.py` ships assumptions, not guarantees:
 
-- Polymarket: `no_fee` by default.
+- Polymarket: taken from each market's `feeSchedule` as `rate * (p * (1 - p)) ** exponent` (formula to verify, see findings); zero when no schedule is published.
 - Kalshi: `0.07 * p * (1 - p)` per contract, without the round-up to the next cent.
 
 Always check each venue's current fee schedule and pass your own function (`fee_fn`) if it differs.

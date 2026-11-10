@@ -30,13 +30,21 @@ def main():
     ap.add_argument("--slippage", type=float, default=0.005, help="extra $ per contract per leg")
     ap.add_argument("--min-profit", type=float, default=0.002)
     ap.add_argument("--pages", type=int, default=5)
+    ap.add_argument(
+        "--include-unverified-buys", action="store_true",
+        help="also report buy-all baskets whose outcomes may not be exhaustive (mostly false positives)",
+    )
     a = ap.parse_args()
 
     kal = scan_intra_kalshi(
-        clients.kalshi_markets(a.pages), clients.kalshi_events(a.pages), slippage=a.slippage
+        clients.kalshi_markets(a.pages), clients.kalshi_events(a.pages),
+        slippage=a.slippage, include_unverified_buys=a.include_unverified_buys,
     )
     show("Kalshi", kal, a.min_profit)
-    poly = scan_intra_polymarket(clients.polymarket_events(a.pages), slippage=a.slippage)
+    poly = scan_intra_polymarket(
+        clients.polymarket_events(a.pages), slippage=a.slippage,
+        include_unverified_buys=a.include_unverified_buys,
+    )
     show("Polymarket (negRisk events)", poly, a.min_profit)
 
 

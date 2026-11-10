@@ -1,8 +1,8 @@
 """Read-only clients for the public Polymarket (Gamma) and Kalshi market-data endpoints.
 
-Parsing is separated from HTTP so it can be unit-tested on saved payloads.
-Endpoint paths and field names follow each venue's public docs at the time of writing:
-check them if a call fails, schemas evolve.
+Parsing is separated from HTTP so it can be unit-tested on saved payloads
+(see tests/fixtures/, excerpts of real responses captured on 2026-11-10).
+See docs/findings.md for what the live APIs actually return.
 """
 from __future__ import annotations
 
@@ -53,13 +53,25 @@ def _jlist(x: Any) -> list:
 
 
 def parse_polymarket_market(m: dict) -> Optional[Quote]:
-    """Binary Yes/No market -> Quote. The NO side is derived from the YES book (mirrored)."""
+    """Open binary Yes/No market -> Quote. The NO side is derived from the YES book (mirrored).
+
+    Skipped: closed or inactive markets (about 11% of the markets nested in "active" events are
+    closed), markets not accepting orders, and non Yes/No outcomes (Over/Under, team names).
+    """
     if m.get("closed") or m.get("active") is False:
+        return None
+    if m.get("acceptingOrders") is False or m.get("enableOrderBook") is False:
         return None
     outcomes = [str(o).lower() for o in _jlist(m.get("outcomes"))]
     if outcomes != ["yes", "no"]:
         return None
     yes_bid, yes_ask = _f(m.get("bestBid")), _f(m.get("bestAsk"))
+    yes_bid = yes_bid if yes_bid is not None and 0.0 < yes_bid < 1.0 else None
+    yes_ask = yes_ask if yes_ask is not None and 0.0 < yes_ask < 1.0 else None
+    schedule = m.get("feeSchedule") if m.get("feesEnabled") else None
+    fee_schedule = None
+    if isinstance(schedule, dict) and _f(schedule.get("rate")) is not None:
+        fee_schedule = (float(schedule["rate"]), _f(schedule.get("exponent")) or 1.0)
     return Quote(
         venue="polymarket",
         market_id=str(m.get("id") or m.get("conditionId")),
@@ -70,40 +82,50 @@ def parse_polymarket_market(m: dict) -> Optional[Quote]:
         no_ask=None if yes_bid is None else 1.0 - yes_bid,
         end_date=m.get("endDate"),
         volume=_f(m.get("volumeNum") or m.get("volume")),
+        fee_schedule=fee_schedule,
     )
 
 
-def polymarket_markets(max_pages: int = 10, page_size: int = 100) -> Iterator[Quote]:
-    for page in range(max_pages):
-        data = get_json(
-            f"{GAMMA}/markets",
-            {"active": "true", "closed": "false", "limit": page_size, "offset": page * page_size},
-        )
-        if not data:
-            return
-        for m in data:
-            q = parse_polymarket_market(m)
-            if q:
-                yield q
-
-
 def polymarket_events(max_pages: int = 10, page_size: int = 100) -> Iterator[dict]:
-    """Events carry their markets. `negRisk` events: exactly one outcome resolves YES."""
+    """Events carry their markets. Sorted by 24h volume: the default order lists stale events first.
+
+    `negRisk` events: exactly one outcome is meant to resolve YES. `negRiskAugmented` events can
+    receive new outcomes later, so their listed outcomes are NOT exhaustive.
+    """
     for page in range(max_pages):
         data = get_json(
             f"{GAMMA}/events",
-            {"active": "true", "closed": "false", "limit": page_size, "offset": page * page_size},
+            {
+                "active": "true",
+                "closed": "false",
+                "order": "volume24hr",
+                "ascending": "false",
+                "limit": page_size,
+                "offset": page * page_size,
+            },
         )
         if not data:
             return
         yield from data
 
 
+def polymarket_markets(max_pages: int = 10, page_size: int = 100) -> Iterator[Quote]:
+    """Open binary markets, flattened from the (volume sorted) events endpoint."""
+    for ev in polymarket_events(max_pages, page_size):
+        for m in ev.get("markets", []):
+            q = parse_polymarket_market(m)
+            if q:
+                yield q
+
+
 # ----------------------------------------------------------------------------- Kalshi
 
 
 def _kalshi_px(m: dict, name: str) -> Optional[float]:
-    """Kalshi quotes either in cents (`yes_ask`) or dollars (`yes_ask_dollars`)."""
+    """Kalshi quotes in dollars as strings (`yes_ask_dollars: "0.4600"`); cents fields are a fallback.
+
+    "0.0000" means no bid and "1.0000" means no ask on the other side: both map to None.
+    """
     v = _f(m.get(f"{name}_dollars"))
     if v is None:
         c = _f(m.get(name))
@@ -111,17 +133,31 @@ def _kalshi_px(m: dict, name: str) -> Optional[float]:
     return v if v is not None and 0.0 < v < 1.0 else None
 
 
-def parse_kalshi_market(m: dict) -> Quote:
+def parse_kalshi_market(m: dict) -> Optional[Quote]:
+    """Active, non-multivariate Kalshi market -> Quote.
+
+    Multivariate (MVE) combo markets are skipped: they dominate the default listing and carry
+    no quotes. The title is combined with `yes_sub_title` because event-level titles such as
+    "GDP growth in 2036?" are shared by every market of the event.
+    """
+    if m.get("mve_collection_ticker"):
+        return None
+    if m.get("status") not in (None, "active"):
+        return None
+    title = m.get("title") or ""
+    sub = m.get("yes_sub_title") or ""
+    if sub and sub.lower() not in title.lower():
+        title = f"{title} [{sub}]" if title else sub
     return Quote(
         venue="kalshi",
         market_id=m.get("ticker", ""),
-        title=m.get("title") or m.get("yes_sub_title") or "",
+        title=title,
         yes_bid=_kalshi_px(m, "yes_bid"),
         yes_ask=_kalshi_px(m, "yes_ask"),
         no_bid=_kalshi_px(m, "no_bid"),
         no_ask=_kalshi_px(m, "no_ask"),
         end_date=m.get("close_time") or m.get("expiration_time"),
-        volume=_f(m.get("volume")),
+        volume=_f(m.get("volume_fp") if m.get("volume_fp") is not None else m.get("volume")),
     )
 
 
@@ -133,7 +169,9 @@ def kalshi_markets(max_pages: int = 10, page_size: int = 1000) -> Iterator[Quote
             params["cursor"] = cursor
         data = get_json(f"{KALSHI}/markets", params)
         for m in data.get("markets", []):
-            yield parse_kalshi_market(m)
+            q = parse_kalshi_market(m)
+            if q:
+                yield q
         cursor = data.get("cursor")
         if not cursor:
             return

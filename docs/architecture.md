@@ -23,7 +23,7 @@ The core rule: **everything that decides "is this an arbitrage" is pure and offl
 | `pm_arb/fees.py` | Fee functions `f(price) -> dollars per contract`: `no_fee`, `kalshi_taker_fee`, `flat_fee` |
 | `pm_arb/arb.py` | `binary_buy`, `basket_buy`, `basket_sell`, `cross_venue` |
 | `pm_arb/matching.py` | `similarity` (token Jaccard + sequence ratio), `dates_compatible`, `match_markets` (greedy one-to-one) |
-| `pm_arb/clients.py` | `get_json` with retry, parsers (`parse_polymarket_market`, `parse_kalshi_market`), page iterators |
+| `pm_arb/clients.py` | `get_json` with retry, parsers (`parse_polymarket_market`, `parse_kalshi_market`; both return `None` for closed, inactive, multivariate or non-binary markets), page iterators |
 | `pm_arb/scan.py` | `scan_intra_kalshi`, `scan_intra_polymarket`, `scan_cross`, `event_basket` |
 | `scripts/` | CLI entry points that print a ranked report |
 | `examples/demo_offline.py` | Runnable walkthrough on synthetic quotes |
@@ -48,8 +48,8 @@ It is deliberately simple. False matches (same words, different event, for examp
 
 | Scanner | Input | Checks |
 |---|---|---|
-| `scan_intra_kalshi` | all open markets + events | binary YES+NO; for `mutually_exclusive` events: buy-all (flagged non-exhaustive) and sell-all |
-| `scan_intra_polymarket` | events | only `negRisk` events: buy-all (flagged) and sell-all |
+| `scan_intra_kalshi` | all open markets + events | binary YES+NO; for `mutually_exclusive` events: sell-all, and buy-all only with `include_unverified_buys` |
+| `scan_intra_polymarket` | events | only `negRisk` events: sell-all; buy-all only for non-augmented events (or with `include_unverified_buys`); fees per market |
 | `scan_cross` | Polymarket quotes + Kalshi quotes | both directions on each matched pair |
 
 ## Adding a venue
@@ -65,4 +65,4 @@ It is deliberately simple. False matches (same words, different event, for examp
 pytest -q
 ```
 
-Tests cover: locked profit, no-arbitrage cases, slippage and fee erosion, 3-outcome baskets, sell-side ROI, direction choice in cross-venue, Kalshi cents/dollars parsing, Polymarket binary-only filtering, mirrored-book behaviour, negRisk and mutually-exclusive event scans, matching and date rejection.
+Tests include regression cases built from real API payloads (`tests/fixtures/`). They cover: locked profit, no-arbitrage cases, slippage and fee erosion, 3-outcome baskets, sell-side ROI, direction choice in cross-venue, Kalshi cents/dollars parsing, Polymarket binary-only filtering, mirrored-book behaviour, negRisk and mutually-exclusive event scans, matching and date rejection.

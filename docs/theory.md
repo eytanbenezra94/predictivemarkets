@@ -70,8 +70,9 @@ The scanner evaluates both directions and keeps the better one.
 
 ## 6. Why the edge is usually small or absent
 
-- **Fees.** Kalshi-style `0.07 * p * (1 - p)` costs up to 1.75 cents per leg at p = 0.5. With two legs this wipes out most 2-3 cent gaps (see `examples/demo_offline.py`).
-- **Mirrored books.** On Polymarket a binary market is one order book: a YES bid at `b` is a NO ask at `1 - b`. Then `a_YES + a_NO = 1 + spread >= 1` by construction, so the plain YES+NO check never fires there.
+- **Fees.** Kalshi-style `0.07 * p * (1 - p)` costs up to 1.75 cents per leg at p = 0.5. Polymarket now publishes a `feeSchedule` on 97% of sampled markets (for example rate 0.05, about 1.25 cents per leg at 50c). With two legs this wipes out most 2-3 cent gaps (see `examples/demo_offline.py`).
+- **Mutually exclusive is not exhaustive.** Live Kalshi events list outcomes whose asks sum to 0.31 (next Pope) or 0.77: buying them all is not riskless. See `docs/findings.md`.
+- **Mirrored books.** On Polymarket a binary market is one order book: a YES bid at `b` is a NO ask at `1 - b`. Then `a_YES + a_NO = 1 + spread >= 1` by construction, so the plain YES+NO check never fires there. On Kalshi's live data it never fired either (0 of 1,512 markets, minimum 1.001).
 - **Depth.** Top-of-book prices have finite size. The profit per set is not the profit you can scale.
 - **Capital lock-up.** A 3% edge that settles in 6 months is about 6% annualised before the opportunity cost of capital.
 - **Execution risk.** The legs are not atomic across venues. A leg that fills while the other moves leaves you with a directional position.

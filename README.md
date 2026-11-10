@@ -19,7 +19,7 @@ cd predictivemarkets
 pip install -r requirements.txt
 
 python examples/demo_offline.py        # no network: hand-checkable examples
-pytest -q                              # 15 unit tests, no network
+pytest -q                              # 26 unit tests, no network
 
 python scripts/scan_intra.py --slippage 0.005 --min-profit 0.002
 python scripts/scan_cross.py --threshold 0.75 --slippage 0.005
@@ -87,6 +87,7 @@ print(opp.profit_per_set if opp else "no arbitrage")
 | `--min-profit` | both | 0.002 / 0.0 | hide opportunities below this profit per set |
 | `--pages` | both | 5 | pages fetched per endpoint (more pages, more markets, slower) |
 | `--threshold` | cross | 0.75 | title similarity cutoff for matching markets |
+| `--include-unverified-buys` | intra | off | also show buy-all baskets on non-exhaustive events (mostly false positives) |
 
 ## Repository layout
 
@@ -100,7 +101,7 @@ pm_arb/
   scan.py       scanners combining clients and logic
 scripts/        command-line scanners
 examples/       offline demo on synthetic quotes
-tests/          unit tests
+tests/          unit tests + fixtures from real API responses
 docs/           theory, architecture, data sources
 ```
 
@@ -111,15 +112,17 @@ docs/           theory, architecture, data sources
 | [`docs/theory.md`](docs/theory.md) | contingent-claim view, formulas, ROI, why edges are small |
 | [`docs/architecture.md`](docs/architecture.md) | modules, data model, matching algorithm, how to add a venue |
 | [`docs/apis.md`](docs/apis.md) | endpoints, fields used, fee assumptions, rate limits |
+| [`docs/findings.md`](docs/findings.md) | **live test results**: what the real APIs return, bugs found and fixed, what is still untested |
 
 ## Limitations (read before trusting any output)
 
-- **APIs not validated live.** The parsers follow the public docs and are tested on synthetic payloads. Compare a real response with the parsed output first.
+- **Partly validated on live data (2026-11-10).** Both parsers were run against real responses and fixed accordingly, but the cross-venue scan, order-book depth and time dynamics are **untested**. Details in [`docs/findings.md`](docs/findings.md).
+- **No executable arbitrage was found in the live snapshot.** Apparent gaps came from non-exhaustive outcome sets, so buy-side baskets are off by default.
 - **Polymarket binary markets are one mirrored book**, so YES+NO arbitrage essentially never appears there. Real edges show up in **multi-outcome (negRisk) events** and **across venues**.
 - **Buy-side baskets assume exhaustive outcomes.** Venues do not always say so, so those results carry a warning.
 - **Cross-venue matching is heuristic** (title similarity + end date). A locked profit requires **identical resolution rules**: read both before acting.
 - **Top-of-book only.** No order-book depth, no latency, no atomic execution across venues, no cost of capital lock-up.
-- **Fee models are assumptions.** Check current schedules.
+- **Fees matter.** 97% of the sampled Polymarket markets carry a taker fee; the formula is an assumption to verify (see findings). Kalshi's is also an assumption.
 - Educational code, not financial advice.
 
 ## Roadmap

@@ -35,7 +35,7 @@ def basket_buy(
 
 
 def basket_sell(
-    bids: Sequence[tuple[str, str, float]],
+    bids: Sequence[tuple],
     fee_fn: FeeFn = no_fee,
     slippage: float = 0.0,
     venue: str = "",
@@ -51,7 +51,8 @@ def basket_sell(
     """
     if len(bids) < 2:
         return None
-    legs = tuple(Leg(venue, mid, label, "SELL_YES", p, fee_fn) for mid, label, p in bids)
+    # Each bid is (market_id, label, price) or (market_id, label, price, fee_fn).
+    legs = tuple(Leg(venue, b[0], b[1], "SELL_YES", b[2], b[3] if len(b) > 3 else fee_fn) for b in bids)
     proceeds = sum(leg.price - slippage - leg.fee_fn(leg.price) for leg in legs)
     profit = proceeds - 1.0
     if profit <= 0:

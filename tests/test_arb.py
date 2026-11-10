@@ -126,3 +126,98 @@ def test_matching_rejects_far_dates():
     a = [q("polymarket", "p", "Fed cuts rates in December", end_date="2026-12-10T00:00:00Z")]
     b = [q("kalshi", "k", "Fed cuts rates in December", end_date="2027-12-10T00:00:00Z")]
     assert match_markets(a, b, 0.6) == []
+
+
+# ----------------------------------------------------------------------------- real-data regressions
+import json  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from pm_arb.fees import schedule_fee  # noqa: E402
+
+FIX = Path(__file__).parent / "fixtures"
+
+
+def fixture(name):
+    return json.loads((FIX / name).read_text())
+
+
+def test_real_polymarket_closed_market_in_active_event_is_skipped():
+    assert parse_polymarket_market(fixture("polymarket_closed_market.json")) is None
+
+
+def test_real_polymarket_fee_schedule_is_parsed():
+    q = parse_polymarket_market(fixture("polymarket_fee_market.json"))
+    assert q.fee_schedule == (0.05, 1.0)
+    # documented peak: $1.25 per 100 contracts at 50c for rate 0.05
+    assert schedule_fee(0.05, 1.0)(0.5) == pytest.approx(0.0125)
+
+
+def test_missing_best_bid_is_none_not_crash():
+    m = {**fixture("polymarket_fee_market.json")}
+    m.pop("bestBid")
+    q = parse_polymarket_market(m)
+    assert q.yes_bid is None and q.no_ask is None and q.yes_ask == pytest.approx(0.05)
+
+
+def test_real_kalshi_multivariate_market_is_skipped():
+    assert parse_kalshi_market(fixture("kalshi_mve_market.json")) is None
+
+
+def test_real_kalshi_market_title_volume_and_mirror():
+    q = parse_kalshi_market(fixture("kalshi_event_market.json"))
+    assert q.title == "Will Klaus Iohannis be the next Secretary General of NATO?"  # sub-title already inside
+    assert q.volume == pytest.approx(383.36)
+    assert (q.yes_bid, q.yes_ask, q.no_ask) == (0.02, 0.04, 0.98)
+    # live finding: no_ask == 1 - yes_bid, so YES ask + NO ask = 1 + spread, never below 1
+    assert q.yes_ask + q.no_ask == pytest.approx(1.02)
+    assert binary_buy(q) is None
+
+
+def test_kalshi_zero_and_one_dollar_quotes_mean_no_quote():
+    q = parse_kalshi_market({"ticker": "T", "yes_ask_dollars": "0.0000", "no_ask_dollars": "1.0000"})
+    assert q.yes_ask is None and q.no_ask is None
+
+
+def _kalshi_mk(t, bid, ask):
+    return {"ticker": t, "title": t, "yes_bid_dollars": f"{bid:.4f}", "yes_ask_dollars": f"{ask:.4f}"}
+
+
+def test_kalshi_exclusive_but_not_exhaustive_event_is_not_reported_by_default():
+    # shaped like the live "next Pope" event: asks sum to 0.31, which is NOT an arbitrage
+    ev = {"mutually_exclusive": True, "markets": [_kalshi_mk("A", 0.10, 0.12), _kalshi_mk("B", 0.08, 0.10), _kalshi_mk("C", 0.08, 0.09)]}
+    assert scan_intra_kalshi([], [ev], fee_fn=lambda p: 0.0) == []
+    flagged = scan_intra_kalshi([], [ev], fee_fn=lambda p: 0.0, include_unverified_buys=True)
+    assert flagged and "exhaustive" in flagged[0].caveat
+
+
+def _pm_mk(i, bid, ask):
+    return {"id": str(i), "question": f"Cand {i}", "outcomes": '["Yes","No"]', "bestBid": bid, "bestAsk": ask,
+            "active": True, "closed": False, "acceptingOrders": True}
+
+
+def test_polymarket_augmented_negrisk_buy_side_is_skipped_by_default():
+    # shaped like the live "Prime Minister of Israel" event: open asks sum to 0.968
+    ev = {"negRisk": True, "negRiskAugmented": True, "markets": [_pm_mk(1, 0.38, 0.40), _pm_mk(2, 0.28, 0.30), _pm_mk(3, 0.25, 0.27)]}
+    assert scan_intra_polymarket([ev]) == []
+    assert len(scan_intra_polymarket([ev], include_unverified_buys=True)) == 1
+
+
+def test_polymarket_fees_use_each_markets_schedule():
+    fee = {"feesEnabled": True, "feeSchedule": {"rate": 0.05, "exponent": 1}}
+    ev = {"negRisk": True, "markets": [{**_pm_mk(i, a - 0.02, a), **fee} for i, a in enumerate([0.40, 0.30, 0.27])]}
+    # raw edge 0.03, fees ~ 0.05 * p * (1 - p) per leg ~ 0.0120 + 0.0105 + 0.0099 -> no profit left
+    assert scan_intra_polymarket([ev]) == []
+
+
+def test_closed_markets_are_excluded_from_event_baskets():
+    ev = {"negRisk": True, "markets": [_pm_mk(1, 0.38, 0.40), _pm_mk(2, 0.28, 0.30), _pm_mk(3, 0.25, 0.27),
+                                       {**_pm_mk(4, 0.0, 0.002), "closed": True, "acceptingOrders": False}]}
+    opps = scan_intra_polymarket([ev])
+    assert len(opps) == 1 and len(opps[0].legs) == 3
+
+
+def test_kalshi_event_level_title_gets_the_outcome_appended():
+    # real shape: every market of the event shares the title "GDP growth in 2036?"
+    q = parse_kalshi_market({"ticker": "KXGDPYEAR-36-B0.3", "title": "GDP growth in 2036?", "yes_sub_title": "0.1% to 0.5%",
+                             "status": "active", "yes_bid_dollars": "0.0100", "yes_ask_dollars": "0.0300"})
+    assert q.title == "GDP growth in 2036? [0.1% to 0.5%]"

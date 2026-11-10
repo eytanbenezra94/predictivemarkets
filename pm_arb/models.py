@@ -19,6 +19,7 @@ class Quote:
     no_ask: Optional[float] = None
     end_date: Optional[str] = None  # ISO 8601
     volume: Optional[float] = None
+    fee_schedule: Optional[tuple[float, float]] = None  # (rate, exponent) when the venue publishes one
 
 
 @dataclass(frozen=True)
