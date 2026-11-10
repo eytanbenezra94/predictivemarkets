@@ -161,22 +161,6 @@ def parse_kalshi_market(m: dict) -> Optional[Quote]:
     )
 
 
-def kalshi_markets(max_pages: int = 10, page_size: int = 1000) -> Iterator[Quote]:
-    cursor = None
-    for _ in range(max_pages):
-        params = {"status": "open", "limit": page_size}
-        if cursor:
-            params["cursor"] = cursor
-        data = get_json(f"{KALSHI}/markets", params)
-        for m in data.get("markets", []):
-            q = parse_kalshi_market(m)
-            if q:
-                yield q
-        cursor = data.get("cursor")
-        if not cursor:
-            return
-
-
 def kalshi_events(max_pages: int = 10, page_size: int = 200) -> Iterator[dict]:
     cursor = None
     for _ in range(max_pages):
@@ -188,3 +172,18 @@ def kalshi_events(max_pages: int = 10, page_size: int = 200) -> Iterator[dict]:
         cursor = data.get("cursor")
         if not cursor:
             return
+
+
+def kalshi_quotes_from_events(events: list[dict]) -> list[Quote]:
+    """Flatten the markets nested in events into quotes (active, non-multivariate only)."""
+    return [q for ev in events for m in ev.get("markets", []) if (q := parse_kalshi_market(m))]
+
+
+def kalshi_markets(max_pages: int = 10, page_size: int = 200) -> Iterator[Quote]:
+    """Quotes taken from the events endpoint, NOT from `/markets`.
+
+    The default `/markets` listing is flooded by multivariate combo markets: on the first live
+    run, two full pages of it contained zero usable quotes. Event-nested markets were clean
+    (1,813 markets, 1,512 with both asks on page 1).
+    """
+    yield from kalshi_quotes_from_events(list(kalshi_events(max_pages, page_size)))

@@ -36,8 +36,9 @@ def main():
     )
     a = ap.parse_args()
 
+    kal_events = list(clients.kalshi_events(a.pages))
     kal = scan_intra_kalshi(
-        clients.kalshi_markets(a.pages), clients.kalshi_events(a.pages),
+        clients.kalshi_quotes_from_events(kal_events), kal_events,
         slippage=a.slippage, include_unverified_buys=a.include_unverified_buys,
     )
     show("Kalshi", kal, a.min_profit)

@@ -279,3 +279,14 @@ def test_run_cycle_end_to_end_on_synthetic_data():
     kinds = sorted(o.kind for o in opps)
     assert "cross_venue" in kinds  # YES@poly 0.30 + NO@kalshi 0.41 = 0.71 -> large synthetic gap
     assert "basket_buy" in kinds   # the non-augmented negRisk basket (sum 0.97)
+
+
+def test_kalshi_quotes_from_events_skips_combo_and_inactive_markets():
+    from pm_arb.clients import kalshi_quotes_from_events
+
+    events = [
+        {"markets": [fixture("kalshi_event_market.json"), fixture("kalshi_mve_market.json"),
+                     {**fixture("kalshi_event_market.json"), "ticker": "X", "status": "finalized"}]},
+        {"markets": [{"ticker": "Y", "title": "Will Y?", "status": "active", "yes_ask_dollars": "0.4000", "no_ask_dollars": "0.6200"}]},
+    ]
+    assert [q.market_id for q in kalshi_quotes_from_events(events)] == ["KXNEXTNATOSECGEN-99-KIOH", "Y"]

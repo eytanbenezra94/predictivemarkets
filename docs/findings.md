@@ -62,7 +62,7 @@ Sum of asks of some `mutually_exclusive` events: next Pope **0.315**, Xi Jinping
 | 3 | **Default event order is stale** | the unsorted listing started with expired events | `order=volume24hr&ascending=false` |
 | 4 | **Buy-side baskets on non-exhaustive events** | Kalshi sums of 0.315 and 0.773; Polymarket augmented events at 0.968 to 0.983 | buy-side is **off by default** (`--include-unverified-buys` to see it); augmented events are skipped |
 | 5 | **Binary YES+NO check can never fire** | 0 of 1,512 Kalshi markets below 1; Polymarket binary is mirrored by construction | kept for completeness, documented as structurally empty |
-| 6 | **Kalshi multivariate (MVE) combo markets flood `/markets`** | the first three markets returned were MVE with no quotes | parser skips markets with `mve_collection_ticker` |
+| 6 | **Kalshi multivariate (MVE) combo markets flood `/markets`** | the first three markets returned were MVE with no quotes; two pages gave 0 usable quotes on the first live run | parser skips `mve_collection_ticker` markets and quotes now come from `/events` instead of `/markets` |
 | 7 | **Kalshi volume field** | the field is `volume_fp`, not `volume`; volume was always `None` | parser reads `volume_fp` |
 | 8 | **Kalshi shared titles** | every market of an event shares a title such as "GDP growth in 2036?" | the `yes_sub_title` is appended, which matters for matching |
 | 9 | **Kalshi no-quote sentinels** | `"0.0000"` (no bid) and `"1.0000"` (no ask) | already mapped to `None`, now covered by a test |
@@ -76,6 +76,12 @@ Regression tests built from real payloads live in `tests/fixtures/` (26 tests in
 - The closest cases (Kalshi "2030 U.S. House winner" at 0.99, two outcomes that are probably not exhaustive) leave about 1 cent gross, which fees remove.
 - This is a single snapshot of the most liquid Polymarket events and the first Kalshi page. It says nothing about intraday windows or illiquid markets.
 - **The cross-venue project remains unvalidated on live data.**
+
+## First live run of the logger (2026-11-10)
+
+The first run on the owner's machine printed `polymarket=3441 kalshi=0`: **no Kalshi quote was read**. Cause: the default `/markets` listing is dominated by multivariate combo markets, which the parser skips, so two full pages yielded nothing. The earlier browser test had already shown the flood (finding 6) but the fix was incomplete, and unit tests on single payloads could not reveal it. Fixed by taking Kalshi quotes from the nested markets of `/events` (verified clean on page 1), and the logger now prints a warning when a venue returns zero quotes.
+
+Lesson: a sanity check on counts (`n_quotes > 0` per venue) catches this class of bug that payload-level tests miss.
 
 ## Still uncertain
 

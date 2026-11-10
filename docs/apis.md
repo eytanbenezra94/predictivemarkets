@@ -33,8 +33,8 @@ Base URL: `https://api.elections.kalshi.com/trade-api/v2`
 
 | Endpoint | Used for | Notes |
 |---|---|---|
-| `GET /markets?status=open&limit=&cursor=` | every open market | cursor pagination |
-| `GET /events?status=open&with_nested_markets=true&limit=&cursor=` | baskets | event has `mutually_exclusive` and nested `markets` |
+| `GET /markets?status=open&limit=&cursor=` | **not used**: the default listing is flooded by multivariate combo markets (zero usable quotes in two pages) | cursor pagination |
+| `GET /events?status=open&with_nested_markets=true&limit=&cursor=` | baskets **and** all binary quotes (flattened from the nested markets) | event has `mutually_exclusive` and nested `markets`; `limit` up to 200 |
 
 Fields used per market:
 

@@ -20,7 +20,7 @@ cd predictivemarkets
 pip install -r requirements.txt
 
 python examples/demo_offline.py        # no network: hand-checkable examples
-pytest -q                              # 31 unit tests, no network
+pytest -q                              # 32 unit tests, no network
 
 python scripts/scan_intra.py --slippage 0.005 --min-profit 0.002
 python scripts/scan_cross.py --threshold 0.75 --slippage 0.005

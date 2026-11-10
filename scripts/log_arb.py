@@ -40,13 +40,15 @@ def main():
             started = time.time()
             try:
                 poly_events = list(clients.polymarket_events(a.pages))
-                kal_markets = list(clients.kalshi_markets(a.pages))
                 kal_events = list(clients.kalshi_events(a.pages))
+                kal_markets = clients.kalshi_quotes_from_events(kal_events)
                 opps, n_poly, n_kal = run_cycle(poly_events, kal_markets, kal_events, a.slippage, a.threshold)
                 ts = time.time()
                 tracking.append_opportunities(a.out, tracking.to_rows(opps, ts))
                 tracking.append_cycle(a.cycles_out, ts, n_poly, n_kal, len(opps))
                 print(f"[{time.strftime('%H:%M:%S')}] polymarket={n_poly} kalshi={n_kal} opportunities={len(opps)}", flush=True)
+                if n_poly == 0 or n_kal == 0:
+                    print("WARNING: a venue returned zero usable quotes: the parser or the endpoint probably changed", file=sys.stderr, flush=True)
             except (requests.RequestException, ValueError) as e:  # network error or malformed JSON: skip the cycle
                 print(f"[{time.strftime('%H:%M:%S')}] cycle skipped: {e}", file=sys.stderr, flush=True)
             n += 1
