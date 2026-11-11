@@ -91,7 +91,7 @@ def run_cycle(
     kalshi_markets: list[Quote],
     kalshi_events: list[dict],
     slippage: float = 0.005,
-    threshold: float = 0.75,
+    threshold: float = 0.85,
     include_unverified_buys: bool = False,
 ) -> tuple[list[Opportunity], int, int]:
     """One full scan on already-fetched data: intra-market on both venues plus cross-venue.
@@ -110,7 +110,7 @@ def run_cycle(
 def scan_cross(
     poly: list[Quote],
     kalshi: list[Quote],
-    threshold: float = 0.75,
+    threshold: float = 0.85,
     poly_fee: Optional[FeeFn] = None,
     kalshi_fee: FeeFn = kalshi_taker_fee,
     slippage: float = 0.0,

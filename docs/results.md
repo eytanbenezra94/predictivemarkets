@@ -14,6 +14,8 @@ Interim results, updated 2026-11-11 16:43: the logger was still running when thi
 
 **Correction on the cross-venue scan.** The "0 cross-venue opportunities" above carries no information. A diagnostic run on 2026-11-11 (`scripts/diagnose_matching.py`, 4,386 Polymarket and 2,412 Kalshi quotes) found **0 matched pairs at every threshold from 0.60 to 0.95**, so no pair was ever compared during the logging run. The cause is a sampling bias, described in [`findings.md`](findings.md): the Kalshi sample was dominated by markets closing in 2031 or later, while the Polymarket sample is the most traded, near-term events. The sampling was then changed (near-term Kalshi markets only); the logging run has to be repeated with the corrected code before any statement about cross-venue gaps.
 
+**Update (third diagnostic).** With a 2028 window the matcher found 55 candidate pairs. The only correct ones (Democratic 2028 nomination) have a raw cost of 0.988 to 1.003, so at most 1.2 cents gross over about two years (about 0.5% a year, before fees). The cheaper pairs (0.861 to 0.95) were different events matched by mistake. The matcher was then fixed so the two groups separate (0.95 and above against 0.69 and below); details in [`findings.md`](findings.md).
+
 ## The only episode: "Discord IPO Closing Market Cap" (Polymarket)
 
 Checked on Polymarket's API right after the run (prices moved slightly since the logged cycles).

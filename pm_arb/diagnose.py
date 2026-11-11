@@ -1,6 +1,7 @@
 """Diagnostics for the cross-venue matcher: does it find pairs on real data, and are they right?"""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional, Sequence
 
 from .matching import match_markets
@@ -29,3 +30,21 @@ def raw_cross_sum(p: Quote, k: Quote) -> Optional[tuple[float, str]]:
     if k.yes_ask is not None and p.no_ask is not None:
         options.append((k.yes_ask + p.no_ask, "YES@kalshi + NO@polymarket"))
     return min(options) if options else None
+
+
+def annualized_yield(cost: float, end_date: Optional[str], now: Optional[datetime] = None) -> Optional[float]:
+    """Gross yield per year of holding a basket that costs `cost` and pays $1 at `end_date`.
+
+    Simple (non-compounded) rate: (1 - cost) / cost / years. None when the date is unknown or past.
+    Helps tell a real gap from a few cents spread over two years of locked capital.
+    """
+    from .matching import _parse
+
+    end = _parse(end_date)
+    if end is None or cost <= 0:
+        return None
+    now = now or datetime.now(timezone.utc)
+    years = (end - now).total_seconds() / (365.25 * 86400)
+    if years <= 0:
+        return None
+    return (1 - cost) / cost / years

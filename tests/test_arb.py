@@ -337,3 +337,39 @@ def test_match_markets_date_window_can_be_disabled():
     b = [q("kalshi", "k", "Will Troy qualify for the College Football Sun Belt Championship Game?", end_date="2027-01-10T00:00:00Z")]
     assert match_markets(a, b, 0.6) == []                       # 40 days apart, rejected by the 2-day window
     assert len(match_markets(a, b, 0.6, max_days=None)) == 1    # accepted when end dates are ignored
+
+
+# --- matcher precision on real titles (from a live diagnostic run) ---
+_SAME = [
+    ("Will Mark Kelly win the 2028 Democratic presidential nomination?", "Will Mark Kelly be the Democratic Presidential nominee in 2028?"),
+    ("Will J.B. Pritzker win the 2028 Democratic presidential nomination?", "Will J.B. Pritzker be the Democratic Presidential nominee in 2028?"),
+]
+_DIFFERENT = [
+    ("Will Marco Rubio win the 2028 Republican presidential nomination?", "Will Marco Rubio and JD Vance be the 2028 Republican Presidential ticket?"),
+    ("Will J.D. Vance win the 2028 Republican presidential nomination?", "Will J.D. Vance win the 2028 Ohio Republican primary?"),
+    ("Will Ted Cruz win the 2028 Republican presidential nomination?", "Will Ted Cruz win the 2028 Iowa Republican caucus?"),
+]
+
+
+def test_similarity_separates_nominee_from_ticket_primary_caucus():
+    assert min(similarity(a, b) for a, b in _SAME) >= 0.9
+    assert max(similarity(a, b) for a, b in _DIFFERENT) < 0.75
+
+
+def test_default_threshold_keeps_same_event_and_drops_others():
+    def q(v, i, title):
+        return Quote(v, i, title, 0.5, 0.5, 0.5, 0.5, "2028-11-07T00:00:00Z")
+    left = [q("polymarket", f"p{i}", a) for i, (a, _) in enumerate(_SAME + _DIFFERENT)]
+    right = [q("kalshi", f"k{i}", b) for i, (_, b) in enumerate(_SAME + _DIFFERENT)]
+    pairs = match_markets(left, right)
+    assert {(p.market_id, k.market_id) for p, k, _ in pairs} == {("p0", "k0"), ("p1", "k1")}
+
+
+def test_annualized_yield():
+    from datetime import datetime, timezone
+    from pm_arb.diagnose import annualized_yield
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    y = annualized_yield(0.99, "2028-01-01T00:00:00Z", now)
+    assert 0.005 < y < 0.006
+    assert annualized_yield(0.99, "2025-01-01T00:00:00Z", now) is None
+    assert annualized_yield(0.99, None, now) is None

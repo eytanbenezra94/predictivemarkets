@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from pm_arb import clients  # noqa: E402
-from pm_arb.diagnose import match_stats, raw_cross_sum  # noqa: E402
+from pm_arb.diagnose import annualized_yield, match_stats, raw_cross_sum  # noqa: E402
 from pm_arb.matching import match_markets  # noqa: E402
 
 
@@ -71,7 +71,9 @@ def main():
 
     print(f"\nLowest raw cost among priced pairs (before fees; below 1.000 = a gap worth checking by hand):")
     for r in sorted(priced, key=lambda r: r["raw_cost"])[: a.top]:
-        print(f"  cost {r['raw_cost']:.3f} score {r['score']:.2f} {r['direction']} | {r['polymarket_title'][:60]} || {r['kalshi_title'][:60]}")
+        y = annualized_yield(r["raw_cost"], r["polymarket_end"])
+        ys = "   -  " if y is None else f"{y:+.1%}/yr"
+        print(f"  cost {r['raw_cost']:.3f} ({ys}) score {r['score']:.2f} {r['direction']} | {r['polymarket_title'][:60]} || {r['kalshi_title'][:60]}")
 
 
 if __name__ == "__main__":

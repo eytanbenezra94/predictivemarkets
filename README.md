@@ -23,7 +23,7 @@ python examples/demo_offline.py        # no network: hand-checkable examples
 pytest -q                              # 34 unit tests, no network
 
 python scripts/scan_intra.py --slippage 0.005 --min-profit 0.002
-python scripts/scan_cross.py --threshold 0.75 --slippage 0.005
+python scripts/scan_cross.py --threshold 0.85 --slippage 0.005
 python scripts/diagnose_matching.py --pages 2             # does the matcher find the SAME events? read the pairs by hand
 
 # project 3: sample every minute, then measure how long gaps last
@@ -95,7 +95,7 @@ Practical notes:
 
 First live run: 261 cycles over a 24 hour window (about 4.4 hours of actual sampling), 1 apparent opportunity episode. The other 221 cycles had no opportunity at all.
 
-**The cross-venue scan found nothing, but that result is void:** a diagnostic showed it matched 0 pairs at any threshold because the two samples did not overlap (Kalshi's default listing is dominated by markets closing after 2031). The sampling has been fixed and the run has to be repeated.
+**The cross-venue scan found nothing, but that result is void:** a diagnostic showed it matched 0 pairs at any threshold because the two samples did not overlap (Kalshi's default listing is dominated by markets closing after 2031). The sampling and the matcher have since been fixed (see [`docs/findings.md`](docs/findings.md), third diagnostic): on the 2028 window the matcher finds the same events (Democratic nomination), with at most 1.2 cents gross over about two years, roughly 0.5% a year; every larger gap was a false match. The logger run has to be repeated with the corrected code.
 
 - The episode was a Polymarket basket ("Discord IPO Closing Market Cap", 8 exhaustive outcomes, asks summing to 0.958) that lasted at least 40 minutes.
 - It is structurally valid, but the net gain is about 3.6% over roughly 13.7 months, close to the time value of money, and selling the legs back early would cost more than the gain. So it is not exploitable.
@@ -124,7 +124,7 @@ print(opp.profit_per_set if opp else "no arbitrage")
 | `--slippage` | both | 0.005 | extra dollars paid per contract per leg |
 | `--min-profit` | both | 0.002 / 0.0 | hide opportunities below this profit per set |
 | `--pages` | both | 5 | pages fetched per endpoint (more pages, more markets, slower) |
-| `--threshold` | cross | 0.75 | title similarity cutoff for matching markets |
+| `--threshold` | cross | 0.85 | title similarity cutoff for matching markets |
 | `--include-unverified-buys` | intra | off | also show buy-all baskets on non-exhaustive events (mostly false positives) |
 
 ## Repository layout

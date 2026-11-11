@@ -10,10 +10,14 @@ from typing import Optional
 from .models import Quote
 
 _STOP = {"the", "a", "an", "of", "in", "on", "at", "to", "be", "will", "is", "by", "for", "and", "or"}
+# Wording that differs across venues for the same question ("win the nomination" vs "be the nominee").
+_STOP |= {"win", "wins", "become", "becomes", "become", "elected"}
+_SYNONYMS = {"nomination": "nominee", "nominate": "nominee", "nominated": "nominee", "nominees": "nominee"}
 
 
 def _tokens(title: str) -> list[str]:
-    return [t for t in re.findall(r"[a-z0-9]+", title.lower()) if t not in _STOP]
+    toks = re.findall(r"[a-z0-9]+", title.lower())
+    return [_SYNONYMS.get(t, t) for t in toks if t not in _STOP]
 
 
 def similarity(t1: str, t2: str) -> float:
@@ -45,7 +49,7 @@ def dates_compatible(d1: Optional[str], d2: Optional[str], max_days: float = 2.0
 def match_markets(
     left: list[Quote],
     right: list[Quote],
-    threshold: float = 0.75,
+    threshold: float = 0.85,
     min_shared: int = 2,
     max_df: int = 300,
     max_days: Optional[float] = 2.0,

@@ -109,7 +109,23 @@ What the real titles look like:
 
 Only 57% of the sampled Polymarket markets are Yes/No (4,046 of 7,138 in the top 100 events): moneylines (team names) and totals (Over/Under) are not parsed, and those are the sports markets where Kalshi also lists contracts. Sampling by close-date windows is now possible (`--min-days`, `--horizon-days`).
 
-**Not yet verified:** whether the matcher finds correct pairs after the fix. Titles for the same event are often phrased differently on the two venues (for example a threshold on one side and a change on the other), which a word-overlap matcher can still miss.
+## Third diagnostic: the matcher finds pairs, most of the cheap ones are false (2026-11-11)
+
+Run with `--pages 3 --min-days 700 --horizon-days 760` (Kalshi markets closing in roughly 2028): **55 pairs at score >= 0.60** (0 before the window was moved).
+
+| What the pairs are | Score | Raw cost (YES one venue + NO other) |
+|---|---|---|
+| **Same event**: "win the 2028 Democratic presidential nomination" (Polymarket) vs "be the Democratic Presidential nominee in 2028" (Kalshi) | 0.71 to 0.75 | **0.988 to 1.003** |
+| **Different events**: nomination vs "Republican Presidential ticket" (two names), vs "Ohio primary", vs "Iowa caucus" | 0.60 to 0.68 | **0.861 to 0.95** (the "big gaps") |
+
+Two conclusions:
+
+1. **Every apparent gap above 5 cents was a false match.** Different events can legitimately sum to less than 1; that is not arbitrage. Reading the pairs by hand is what exposed it.
+2. **The correct pairs show at most 1.2 cents gross before fees and slippage, for about 24 months of locked capital**: roughly 0.5% per year at best, below what the capital earns elsewhere. Not exploitable.
+
+**Matcher fix.** The correct pairs scored barely above the false ones (0.71 to 0.75 against 0.60 to 0.68), so no threshold separated them; the default 0.75 would have kept a single pair. Cause: wording that differs across venues for the same question ("win" / "be", "nomination" / "nominee"). `matching._tokens` now drops `win/wins/become/becomes/elected` and maps `nomination/nominate/nominated` to `nominee`. On the same titles, correct pairs now score **0.95 to 0.96** and false ones **0.57 to 0.69**; the default threshold is **0.85**. This is tuned on a handful of political titles: other categories (sports, crypto, macro) may need their own normalisation, so the diagnostic must be re-run on them. The diagnostic also prints the annualised gross yield of each pair (`annualized_yield`) so a few cents over two years is not mistaken for a gap.
+
+**Not yet verified:** the new threshold on categories other than politics, and whether any pair beats the fees on a short horizon. The 2028 window is the only one that has produced correct pairs so far.
 
 ## Still uncertain
 

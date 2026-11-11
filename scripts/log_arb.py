@@ -32,7 +32,7 @@ def main():
     ap.add_argument("--horizon-days", type=float, default=90, help="Kalshi markets closing within N days (cross-venue)")
     ap.add_argument("--market-pages", type=int, default=2, help="pages of 1000 near-term Kalshi markets")
     ap.add_argument("--min-days", type=float, default=0, help="only Kalshi markets closing after N days")
-    ap.add_argument("--threshold", type=float, default=0.75)
+    ap.add_argument("--threshold", type=float, default=0.85)
     ap.add_argument("--out", default="data/opportunities.csv")
     ap.add_argument("--cycles-out", default="data/cycles.csv")
     a = ap.parse_args()

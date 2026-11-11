@@ -1,6 +1,6 @@
 """Project 2 - Cross-venue arbitrage: same event priced differently on Polymarket and Kalshi.
 
-Usage: python scripts/scan_cross.py [--threshold 0.75] [--slippage 0.005] [--pages 5]
+Usage: python scripts/scan_cross.py [--threshold 0.85] [--slippage 0.005] [--pages 5]
 Always check resolution rules by hand before acting on a match.
 """
 import argparse
@@ -15,7 +15,7 @@ from pm_arb.scan import scan_cross  # noqa: E402
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--threshold", type=float, default=0.75, help="title similarity cutoff")
+    ap.add_argument("--threshold", type=float, default=0.85, help="title similarity cutoff")
     ap.add_argument("--slippage", type=float, default=0.005)
     ap.add_argument("--min-profit", type=float, default=0.0)
     ap.add_argument("--pages", type=int, default=5)
