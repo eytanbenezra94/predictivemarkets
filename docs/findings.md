@@ -97,6 +97,18 @@ The two samples barely overlap by construction, and the 2-day end-date window re
 
 **Fix.** Kalshi cross-venue quotes now come from `/markets` with two filters verified on live data: `mve_filter=exclude` (0 combo markets left) and `max_close_ts` (a 1,000-market page, all closing in 2027, cursor present; 883 with a YES ask, 342 with both asks; dominated by college football and sports props). Intra-market baskets still use `/events`. The date window is configurable (`--max-days`) and the diagnostic prints pair counts with and without end dates, to show how much the date rule removes.
 
+**Second diagnostic, after the fix (live):** still **0 pairs at every threshold, even with end dates ignored** (4,379 Polymarket quotes, 2,000 Kalshi quotes closing within 90 days). So the empty result is not only a date-window effect: the two samples simply contain no title the matcher considers close.
+
+What the real titles look like:
+
+| | Examples |
+|---|---|
+| Polymarket top events by volume | NBA games with 300 to 475 markets each (moneyline and spreads have team names as outcomes, player props are Over/Under, only part are Yes/No), crypto price ladders ("Will Bitcoin reach $81,000 on November 11?"), Fed decision ("Will the Fed decrease interest rates by 25 bps after the December 2026 meeting?"), 2028 election ("Will JD Vance win the 2028 US Presidential Election?") |
+| Kalshi, closing within 90 days (first 2,000) | dominated by college football series and props; no overlap with the above in this sample |
+| Kalshi, closing in Nov 2028 (`min_close_ts` + `max_close_ts`, 1,000 markets, cursor present) | "Will the 2028 presidential election occur?", Republican ticket combinations, vice-presidency nominee markets: related topic, **different market definitions** from Polymarket's "win the election" markets in the 6 titles inspected |
+
+Only 59% of the sampled Polymarket markets are Yes/No (4,046 of 7,138 in the top 100 events): moneylines (team names) and totals (Over/Under) are not parsed, and those are the sports markets where Kalshi also lists contracts. Sampling by close-date windows is now possible (`--min-days`, `--horizon-days`).
+
 **Not yet verified:** whether the matcher finds correct pairs after the fix. Titles for the same event are often phrased differently on the two venues (for example a threshold on one side and a change on the other), which a word-overlap matcher can still miss.
 
 ## Still uncertain

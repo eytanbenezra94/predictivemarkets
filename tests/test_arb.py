@@ -325,9 +325,10 @@ def test_kalshi_markets_sends_verified_filters_and_follows_cursor(monkeypatch):
         return pages[len(calls) - 1]
 
     monkeypatch.setattr(c, "get_json", fake_get)
-    out = list(c.kalshi_markets(max_pages=5, horizon_days=10, now=1_000_000))
+    out = list(c.kalshi_markets(max_pages=5, horizon_days=10, now=1_000_000, min_days=2))
     assert [x.market_id for x in out] == ["KXNEXTNATOSECGEN-99-KIOH", "Z"]  # combo market dropped
     assert calls[0][1]["mve_filter"] == "exclude" and calls[0][1]["max_close_ts"] == 1_000_000 + 10 * 86400
+    assert calls[0][1]["min_close_ts"] == 1_000_000 + 2 * 86400
     assert calls[1][1]["cursor"] == "abc" and len(calls) == 2
 
 

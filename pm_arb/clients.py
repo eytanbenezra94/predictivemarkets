@@ -180,13 +180,18 @@ def kalshi_quotes_from_events(events: list[dict]) -> list[Quote]:
 
 
 def kalshi_markets(
-    max_pages: int = 2, page_size: int = 1000, horizon_days: float = 90, now: Optional[float] = None
+    max_pages: int = 2,
+    page_size: int = 1000,
+    horizon_days: float = 90,
+    now: Optional[float] = None,
+    min_days: float = 0,
 ) -> Iterator[Quote]:
-    """Near-term Kalshi markets, for the cross-venue scan.
+    """Kalshi markets closing between `min_days` and `horizon_days` from now, for the cross-venue scan.
 
     Two filters were verified on live data (2026-11-11): `mve_filter=exclude` removes the
     multivariate combos that flood the default listing, and `max_close_ts` keeps markets closing
-    within `horizon_days`. Without the horizon, the default order is dominated by markets
+    within `horizon_days` and `min_close_ts` (also verified) lets you target a later window, for
+    example `min_days=700, horizon_days=760` for the 2028 US election markets. Without the horizon, the default order is dominated by markets
     closing in 2031 or later, which cannot overlap with Polymarket's most traded (near-term)
     events: a first diagnostic then found 0 matched pairs at any threshold.
     """
@@ -199,6 +204,8 @@ def kalshi_markets(
             "mve_filter": "exclude",
             "max_close_ts": now + int(horizon_days * 86400),
         }
+        if min_days > 0:
+            params["min_close_ts"] = now + int(min_days * 86400)
         if cursor:
             params["cursor"] = cursor
         data = get_json(f"{KALSHI}/markets", params)

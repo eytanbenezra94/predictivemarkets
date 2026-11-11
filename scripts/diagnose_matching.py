@@ -28,11 +28,12 @@ def main():
     ap.add_argument("--min-score", type=float, default=0.6, help="lowest similarity kept in the CSV and the lists")
     ap.add_argument("--out", default="data/matches.csv")
     ap.add_argument("--horizon-days", type=float, default=90, help="Kalshi markets closing within N days")
+    ap.add_argument("--min-days", type=float, default=0, help="only Kalshi markets closing after N days (target a later window)")
     ap.add_argument("--max-days", type=float, default=2.0, help="max end-date difference for a pair")
     a = ap.parse_args()
 
     poly = list(clients.polymarket_markets(a.pages))
-    kal = list(clients.kalshi_markets(a.pages, horizon_days=a.horizon_days))
+    kal = list(clients.kalshi_markets(a.pages, horizon_days=a.horizon_days, min_days=a.min_days))
     print(f"Polymarket binary quotes: {len(poly)} | Kalshi quotes: {len(kal)}")
     if not poly or not kal:
         sys.exit("A venue returned no quotes: check the parsers before reading anything else.")

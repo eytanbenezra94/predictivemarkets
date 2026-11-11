@@ -20,10 +20,11 @@ def main():
     ap.add_argument("--min-profit", type=float, default=0.0)
     ap.add_argument("--pages", type=int, default=5)
     ap.add_argument("--horizon-days", type=float, default=90, help="Kalshi markets closing within N days")
+    ap.add_argument("--min-days", type=float, default=0, help="only Kalshi markets closing after N days (target a later window)")
     a = ap.parse_args()
 
     poly = list(clients.polymarket_markets(a.pages))
-    kal = list(clients.kalshi_markets(a.pages, horizon_days=a.horizon_days))
+    kal = list(clients.kalshi_markets(a.pages, horizon_days=a.horizon_days, min_days=a.min_days))
     print(f"Polymarket: {len(poly)} binary markets | Kalshi: {len(kal)} markets")
 
     results = [(o, s) for o, s in scan_cross(poly, kal, a.threshold, slippage=a.slippage) if o.profit_per_set >= a.min_profit]
