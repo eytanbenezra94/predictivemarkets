@@ -12,7 +12,7 @@ Interim results, updated 2026-11-11 16:43: the logger was still running when thi
 | Best profit per set | $0.0041 after 0.5 cent slippage per leg and fees |
 | Skipped cycles | several per hour seen in the console, not stored in the CSV: DNS resolution failures and connection resets on the local network, and read timeouts |
 
-The cross-venue scan reported nothing in this window, including 133 additional cycles recorded since the first write-up (overnight and daytime). That cannot yet be read as "no cross-venue gap": the number of title pairs the matcher actually found on real data has not been measured, so a silent matcher and an efficient market look the same.
+**Correction on the cross-venue scan.** The "0 cross-venue opportunities" above carries no information. A diagnostic run on 2026-11-11 (`scripts/diagnose_matching.py`, 4,386 Polymarket and 2,412 Kalshi quotes) found **0 matched pairs at every threshold from 0.60 to 0.95**, so no pair was ever compared during the logging run. The cause is a sampling bias, described in [`findings.md`](findings.md): the Kalshi sample was dominated by markets closing in 2031 or later, while the Polymarket sample is the most traded, near-term events. The sampling was then changed (near-term Kalshi markets only); the logging run has to be repeated with the corrected code before any statement about cross-venue gaps.
 
 ## The only episode: "Discord IPO Closing Market Cap" (Polymarket)
 
@@ -52,4 +52,4 @@ One more detail: the event's rules text refers to a different label and date tha
 - An apparent arbitrage that lasts long is not necessarily a mis-specified one: it can be structurally valid and economically uninteresting. The checks that matter are the exhaustiveness of the outcomes, the cost of capital until resolution, and the exit cost.
 - With 8 legs, the slippage assumption dominates the result. It is a parameter to vary (`--slippage`), not a constant.
 - Open questions: depth at the quoted asks, behaviour of the cross-venue matcher on a longer run, how the picture changes outside overnight hours.
-- To interpret "0 cross-venue opportunities", run `python scripts/diagnose_matching.py`: it prints how many Polymarket and Kalshi markets the matcher pairs at each similarity threshold, lists the best pairs with their end dates and prices so they can be checked by hand, and saves them to `data/matches.csv`. If it pairs almost nothing, the empty result says little about market efficiency.
+- To check that the cross-venue scan sees anything, run `python scripts/diagnose_matching.py`: it prints how many Polymarket and Kalshi markets the matcher pairs at each similarity threshold, lists the best pairs with their end dates and prices so they can be checked by hand, and saves them to `data/matches.csv`. If it pairs almost nothing, the empty result says little about market efficiency.

@@ -179,11 +179,33 @@ def kalshi_quotes_from_events(events: list[dict]) -> list[Quote]:
     return [q for ev in events for m in ev.get("markets", []) if (q := parse_kalshi_market(m))]
 
 
-def kalshi_markets(max_pages: int = 10, page_size: int = 200) -> Iterator[Quote]:
-    """Quotes taken from the events endpoint, NOT from `/markets`.
+def kalshi_markets(
+    max_pages: int = 2, page_size: int = 1000, horizon_days: float = 90, now: Optional[float] = None
+) -> Iterator[Quote]:
+    """Near-term Kalshi markets, for the cross-venue scan.
 
-    The default `/markets` listing is flooded by multivariate combo markets: on the first live
-    run, two full pages of it contained zero usable quotes. Event-nested markets were clean
-    (1,813 markets, 1,512 with both asks on page 1).
+    Two filters were verified on live data (2026-11-11): `mve_filter=exclude` removes the
+    multivariate combos that flood the default listing, and `max_close_ts` keeps markets closing
+    within `horizon_days`. Without the horizon, the default order is dominated by markets
+    closing in 2031 or later, which cannot overlap with Polymarket's most traded (near-term)
+    events: a first diagnostic then found 0 matched pairs at any threshold.
     """
-    yield from kalshi_quotes_from_events(list(kalshi_events(max_pages, page_size)))
+    now = int(now if now is not None else time.time())
+    cursor = None
+    for _ in range(max_pages):
+        params = {
+            "status": "open",
+            "limit": page_size,
+            "mve_filter": "exclude",
+            "max_close_ts": now + int(horizon_days * 86400),
+        }
+        if cursor:
+            params["cursor"] = cursor
+        data = get_json(f"{KALSHI}/markets", params)
+        for m in data.get("markets", []):
+            q = parse_kalshi_market(m)
+            if q:
+                yield q
+        cursor = data.get("cursor")
+        if not cursor:
+            return

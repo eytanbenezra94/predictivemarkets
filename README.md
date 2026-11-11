@@ -93,7 +93,9 @@ Practical notes:
 
 ## Results so far (interim)
 
-First live run: 261 cycles over a 24 hour window (about 4.4 hours of actual sampling), 1 apparent opportunity episode, none cross-venue. The other 221 cycles had no opportunity at all.
+First live run: 261 cycles over a 24 hour window (about 4.4 hours of actual sampling), 1 apparent opportunity episode. The other 221 cycles had no opportunity at all.
+
+**The cross-venue scan found nothing, but that result is void:** a diagnostic showed it matched 0 pairs at any threshold because the two samples did not overlap (Kalshi's default listing is dominated by markets closing after 2031). The sampling has been fixed and the run has to be repeated.
 
 - The episode was a Polymarket basket ("Discord IPO Closing Market Cap", 8 exhaustive outcomes, asks summing to 0.958) that lasted at least 40 minutes.
 - It is structurally valid, but the net gain is about 3.6% over roughly 13.7 months, close to the time value of money, and selling the legs back early would cost more than the gain. So it is not exploitable.
@@ -159,7 +161,7 @@ docs/           theory, architecture, data sources
 - **No executable arbitrage was found in the live snapshot.** Apparent gaps came from non-exhaustive outcome sets, so buy-side baskets are off by default.
 - **Polymarket binary markets are one mirrored book**, so YES+NO arbitrage essentially never appears there. Real edges show up in **multi-outcome (negRisk) events** and **across venues**.
 - **Buy-side baskets assume exhaustive outcomes.** Venues do not always say so, so those results carry a warning.
-- **Cross-venue matching is heuristic** (title similarity + end date). A locked profit requires **identical resolution rules**: read both before acting.
+- **Cross-venue matching is heuristic** (title similarity + end date) and was **blind in the first run** (0 pairs, see above); its precision after the fix is unverified. A locked profit requires **identical resolution rules**: read both before acting.
 - **Top-of-book only.** No order-book depth, no latency, no atomic execution across venues, no cost of capital lock-up.
 - **Fees matter.** 97% of the sampled Polymarket markets carry a taker fee; the formula is an assumption to verify (see findings). Kalshi's is also an assumption.
 - Educational code, not financial advice.

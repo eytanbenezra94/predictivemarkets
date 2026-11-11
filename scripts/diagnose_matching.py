@@ -27,19 +27,23 @@ def main():
     ap.add_argument("--top", type=int, default=20)
     ap.add_argument("--min-score", type=float, default=0.6, help="lowest similarity kept in the CSV and the lists")
     ap.add_argument("--out", default="data/matches.csv")
+    ap.add_argument("--horizon-days", type=float, default=90, help="Kalshi markets closing within N days")
+    ap.add_argument("--max-days", type=float, default=2.0, help="max end-date difference for a pair")
     a = ap.parse_args()
 
     poly = list(clients.polymarket_markets(a.pages))
-    kal = clients.kalshi_quotes_from_events(list(clients.kalshi_events(a.pages)))
+    kal = list(clients.kalshi_markets(a.pages, horizon_days=a.horizon_days))
     print(f"Polymarket binary quotes: {len(poly)} | Kalshi quotes: {len(kal)}")
     if not poly or not kal:
         sys.exit("A venue returned no quotes: check the parsers before reading anything else.")
 
-    print("\nMatched pairs by similarity threshold:")
-    for t, n in match_stats(poly, kal).items():
-        print(f"  >= {t:.2f}: {n}")
+    print(f"\nMatched pairs by similarity threshold (end dates within {a.max_days:g} days | end dates ignored):")
+    with_dates = match_stats(poly, kal, max_days=a.max_days)
+    no_dates = match_stats(poly, kal, max_days=None)
+    for t in with_dates:
+        print(f"  >= {t:.2f}: {with_dates[t]:5d} | {no_dates[t]:5d}")
 
-    pairs = match_markets(poly, kal, a.min_score)
+    pairs = match_markets(poly, kal, a.min_score, max_days=a.max_days)
     rows = []
     for p, k, score in pairs:
         rc = raw_cross_sum(p, k)

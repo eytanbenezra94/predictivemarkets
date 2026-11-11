@@ -83,6 +83,22 @@ The first run on the owner's machine printed `polymarket=3441 kalshi=0`: **no Ka
 
 Lesson: a sanity check on counts (`n_quotes > 0` per venue) catches this class of bug that payload-level tests miss.
 
+## The cross-venue scan was blind (2026-11-11)
+
+`scripts/diagnose_matching.py` on live data printed **0 matched pairs at every threshold from 0.60 to 0.95**. The matcher had never been given overlapping markets.
+
+| Observation | Value |
+|---|---|
+| Kalshi `/events` page 1 (default order), markets by close year | 2026: 16, 2027: 38, 2028-30: 458, **2031 or later: 1,275** (of 1,787) |
+| Typical events there | "visit Mars", "next NATO Secretary General", "next Pope" (some close in 2099) |
+| Polymarket sample | events sorted by 24h volume, i.e. near-term |
+
+The two samples barely overlap by construction, and the 2-day end-date window rejects the rest.
+
+**Fix.** Kalshi cross-venue quotes now come from `/markets` with two filters verified on live data: `mve_filter=exclude` (0 combo markets left) and `max_close_ts` (a 1,000-market page, all closing in 2027, cursor present; 883 with a YES ask, 342 with both asks; dominated by college football and sports props). Intra-market baskets still use `/events`. The date window is configurable (`--max-days`) and the diagnostic prints pair counts with and without end dates, to show how much the date rule removes.
+
+**Not yet verified:** whether the matcher finds correct pairs after the fix. Titles for the same event are often phrased differently on the two venues (for example a threshold on one side and a change on the other), which a word-overlap matcher can still miss.
+
 ## Still uncertain
 
 - **Polymarket fee formula.** Public sources disagree on whether there is an extra factor `p` and how `exponent` enters. `schedule_fee` uses `rate * (p * (1 - p)) ** exponent`, which reproduces the documented $1.25 per 100 contracts at 50c for rate 0.05. Check `clob.polymarket.com/fee-rate` before relying on a fee-sensitive result.

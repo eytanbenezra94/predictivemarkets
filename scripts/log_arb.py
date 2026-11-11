@@ -29,6 +29,8 @@ def main():
     ap.add_argument("--cycles", type=int, default=0, help="stop after N cycles (0 = until Ctrl-C)")
     ap.add_argument("--pages", type=int, default=2)
     ap.add_argument("--slippage", type=float, default=0.005)
+    ap.add_argument("--horizon-days", type=float, default=90, help="Kalshi markets closing within N days (cross-venue)")
+    ap.add_argument("--market-pages", type=int, default=2, help="pages of 1000 near-term Kalshi markets")
     ap.add_argument("--threshold", type=float, default=0.75)
     ap.add_argument("--out", default="data/opportunities.csv")
     ap.add_argument("--cycles-out", default="data/cycles.csv")
@@ -41,7 +43,7 @@ def main():
             try:
                 poly_events = list(clients.polymarket_events(a.pages))
                 kal_events = list(clients.kalshi_events(a.pages))
-                kal_markets = clients.kalshi_quotes_from_events(kal_events)
+                kal_markets = list(clients.kalshi_markets(a.market_pages, horizon_days=a.horizon_days))
                 opps, n_poly, n_kal = run_cycle(poly_events, kal_markets, kal_events, a.slippage, a.threshold)
                 ts = time.time()
                 tracking.append_opportunities(a.out, tracking.to_rows(opps, ts))

@@ -308,3 +308,31 @@ def test_match_stats_counts_pairs_per_threshold():
     kal = [q("kalshi", "k1", "Fed cuts rates in December 2026"), q("kalshi", "k2", "Totally unrelated question about tennis")]
     stats = match_stats(poly, kal, (0.5, 0.99))
     assert stats[0.5] == 1 and stats[0.99] == 0
+
+
+# ----------------------------------------------------------------------------- near-term Kalshi markets
+def test_kalshi_markets_sends_verified_filters_and_follows_cursor(monkeypatch):
+    from pm_arb import clients as c
+
+    calls = []
+    pages = [
+        {"markets": [fixture("kalshi_event_market.json"), fixture("kalshi_mve_market.json")], "cursor": "abc"},
+        {"markets": [{"ticker": "Z", "title": "Will Z?", "status": "active", "yes_ask_dollars": "0.4000", "no_ask_dollars": "0.6200"}], "cursor": ""},
+    ]
+
+    def fake_get(url, params=None, retries=3):
+        calls.append((url, dict(params)))
+        return pages[len(calls) - 1]
+
+    monkeypatch.setattr(c, "get_json", fake_get)
+    out = list(c.kalshi_markets(max_pages=5, horizon_days=10, now=1_000_000))
+    assert [x.market_id for x in out] == ["KXNEXTNATOSECGEN-99-KIOH", "Z"]  # combo market dropped
+    assert calls[0][1]["mve_filter"] == "exclude" and calls[0][1]["max_close_ts"] == 1_000_000 + 10 * 86400
+    assert calls[1][1]["cursor"] == "abc" and len(calls) == 2
+
+
+def test_match_markets_date_window_can_be_disabled():
+    a = [q("polymarket", "p", "Will Troy qualify for the Sun Belt Championship Game?", end_date="2026-12-01T00:00:00Z")]
+    b = [q("kalshi", "k", "Will Troy qualify for the College Football Sun Belt Championship Game?", end_date="2027-01-10T00:00:00Z")]
+    assert match_markets(a, b, 0.6) == []                       # 40 days apart, rejected by the 2-day window
+    assert len(match_markets(a, b, 0.6, max_days=None)) == 1    # accepted when end dates are ignored

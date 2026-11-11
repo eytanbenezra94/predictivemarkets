@@ -7,9 +7,14 @@ from .matching import match_markets
 from .models import Quote
 
 
-def match_stats(poly: list[Quote], kalshi: list[Quote], thresholds: Sequence[float] = (0.6, 0.7, 0.75, 0.85, 0.95)) -> dict:
-    """Number of one-to-one matched pairs at each similarity threshold."""
-    return {t: len(match_markets(poly, kalshi, t)) for t in thresholds}
+def match_stats(
+    poly: list[Quote],
+    kalshi: list[Quote],
+    thresholds: Sequence[float] = (0.6, 0.7, 0.75, 0.85, 0.95),
+    max_days: Optional[float] = 2.0,
+) -> dict:
+    """Number of one-to-one matched pairs at each similarity threshold (`max_days=None`: ignore end dates)."""
+    return {t: len(match_markets(poly, kalshi, t, max_days=max_days)) for t in thresholds}
 
 
 def raw_cross_sum(p: Quote, k: Quote) -> Optional[tuple[float, str]]:

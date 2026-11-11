@@ -48,6 +48,7 @@ def match_markets(
     threshold: float = 0.75,
     min_shared: int = 2,
     max_df: int = 300,
+    max_days: Optional[float] = 2.0,
 ) -> list[tuple[Quote, Quote, float]]:
     """Greedy one-to-one matching, best scores first. Returns (left, right, score).
 
@@ -73,7 +74,7 @@ def match_markets(
             if c < min(min_shared, len(ltoks), len(rtoks[j])):
                 continue
             r = right[j]
-            if not dates_compatible(l.end_date, r.end_date):
+            if max_days is not None and not dates_compatible(l.end_date, r.end_date, max_days):
                 continue
             s = similarity(l.title, r.title)
             if s >= threshold:
