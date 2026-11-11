@@ -290,3 +290,21 @@ def test_kalshi_quotes_from_events_skips_combo_and_inactive_markets():
         {"markets": [{"ticker": "Y", "title": "Will Y?", "status": "active", "yes_ask_dollars": "0.4000", "no_ask_dollars": "0.6200"}]},
     ]
     assert [q.market_id for q in kalshi_quotes_from_events(events)] == ["KXNEXTNATOSECGEN-99-KIOH", "Y"]
+
+
+# ----------------------------------------------------------------------------- matcher diagnostics
+from pm_arb.diagnose import match_stats, raw_cross_sum  # noqa: E402
+
+
+def test_raw_cross_sum_picks_cheapest_direction_or_none():
+    p = q("polymarket", "p", "x", yes_ask=0.40, no_ask=0.62)
+    k = q("kalshi", "k", "x", yes_ask=0.65, no_ask=0.55)
+    assert raw_cross_sum(p, k) == (pytest.approx(0.95), "YES@polymarket + NO@kalshi")
+    assert raw_cross_sum(q("polymarket", "p", "x"), q("kalshi", "k", "x")) is None
+
+
+def test_match_stats_counts_pairs_per_threshold():
+    poly = [q("polymarket", "p1", "Will the Fed cut rates in December 2026?"), q("polymarket", "p2", "Bitcoin above 100k on Dec 31")]
+    kal = [q("kalshi", "k1", "Fed cuts rates in December 2026"), q("kalshi", "k2", "Totally unrelated question about tennis")]
+    stats = match_stats(poly, kal, (0.5, 0.99))
+    assert stats[0.5] == 1 and stats[0.99] == 0

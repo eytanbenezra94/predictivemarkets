@@ -20,10 +20,11 @@ cd predictivemarkets
 pip install -r requirements.txt
 
 python examples/demo_offline.py        # no network: hand-checkable examples
-pytest -q                              # 32 unit tests, no network
+pytest -q                              # 34 unit tests, no network
 
 python scripts/scan_intra.py --slippage 0.005 --min-profit 0.002
 python scripts/scan_cross.py --threshold 0.75 --slippage 0.005
+python scripts/diagnose_matching.py --pages 2             # does the matcher find the SAME events? read the pairs by hand
 
 # project 3: sample every minute, then measure how long gaps last
 python scripts/log_arb.py --interval 60 --pages 2          # Ctrl-C to stop
@@ -135,6 +136,7 @@ pm_arb/
   clients.py    Polymarket Gamma and Kalshi public endpoints + parsers
   scan.py       scanners combining clients and logic, plus `run_cycle`
   tracking.py   CSV logging, episodes and duration statistics
+  diagnose.py   matcher diagnostics (pairs found per threshold, raw cross-venue cost)
 scripts/        command-line scanners, logger and log analysis
 examples/       offline demo on synthetic quotes
 tests/          unit tests + fixtures from real API responses
