@@ -33,7 +33,7 @@ def to_rows(opps: Iterable[Opportunity], ts: float) -> list[dict]:
             "profit": round(o.profit_per_set, 6),
             "roi": round(o.roi, 6),
             "n_legs": len(o.legs),
-            "description": o.description + " | " + "; ".join(f"{l.side}@{l.price:.3f} {l.label[:40]}" for l in o.legs[:3]),
+            "description": o.description + " | " + "; ".join(f"{l.side}@{l.price:.3f} {l.label[:60]}" for l in o.legs),
             "caveat": o.caveat,
         }
         for o in opps
