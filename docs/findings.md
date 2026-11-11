@@ -107,7 +107,7 @@ What the real titles look like:
 | Kalshi, closing within 90 days (first 2,000) | dominated by college football series and props; no overlap with the above in this sample |
 | Kalshi, closing in Nov 2028 (`min_close_ts` + `max_close_ts`, 1,000 markets, cursor present) | "Will the 2028 presidential election occur?", Republican ticket combinations, vice-presidency nominee markets: related topic, **different market definitions** from Polymarket's "win the election" markets in the 6 titles inspected |
 
-Only 59% of the sampled Polymarket markets are Yes/No (4,046 of 7,138 in the top 100 events): moneylines (team names) and totals (Over/Under) are not parsed, and those are the sports markets where Kalshi also lists contracts. Sampling by close-date windows is now possible (`--min-days`, `--horizon-days`).
+Only 57% of the sampled Polymarket markets are Yes/No (4,046 of 7,138 in the top 100 events): moneylines (team names) and totals (Over/Under) are not parsed, and those are the sports markets where Kalshi also lists contracts. Sampling by close-date windows is now possible (`--min-days`, `--horizon-days`).
 
 **Not yet verified:** whether the matcher finds correct pairs after the fix. Titles for the same event are often phrased differently on the two venues (for example a threshold on one side and a change on the other), which a word-overlap matcher can still miss.
 
