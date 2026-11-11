@@ -148,7 +148,6 @@ docs/           theory, architecture, data sources
 | [`docs/theory.md`](docs/theory.md) | contingent-claim view, formulas, ROI, why edges are small |
 | [`docs/architecture.md`](docs/architecture.md) | modules, data model, matching algorithm, how to add a venue |
 | [`docs/apis.md`](docs/apis.md) | endpoints, fields used, fee assumptions, rate limits |
-| [`docs/faq.md`](docs/faq.md) | short answers: mirrored books, exclusive vs exhaustive, ROI definitions, what is not validated |
 | [`docs/results.md`](docs/results.md) | **first live run of the logger**: counts, the one episode found, why it is not exploitable |
 | [`docs/findings.md`](docs/findings.md) | **live test results**: what the real APIs return, bugs found and fixed, what is still untested |
 
