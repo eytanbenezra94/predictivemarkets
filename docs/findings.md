@@ -125,6 +125,13 @@ Two conclusions:
 
 **Matcher fix.** The correct pairs scored barely above the false ones (0.71 to 0.75 against 0.60 to 0.68), so no threshold separated them; the default 0.75 would have kept a single pair. Cause: wording that differs across venues for the same question ("win" / "be", "nomination" / "nominee"). `matching._tokens` now drops `win/wins/become/becomes/elected` and maps `nomination/nominate/nominated` to `nominee`. On the same titles, correct pairs now score **0.95 to 0.96** and false ones **0.57 to 0.69**; the default threshold is **0.85**. This is tuned on a handful of political titles: other categories (sports, crypto, macro) may need their own normalisation, so the diagnostic must be re-run on them. The diagnostic also prints the annualised gross yield of each pair (`annualized_yield`) so a few cents over two years is not mistaken for a gap.
 
+**Re-run with the fixed matcher (live, same window):** 5,941 Polymarket and 2,325 Kalshi quotes. Pairs by threshold (end dates within 2 days): 52 at 0.60, 36 at 0.75, **35 at 0.85**, 14 at 0.95. 48 of the 52 pairs have both asks.
+
+- The 20 best-scoring pairs are all the same event (Democratic 2028 nomination, 20 different candidates), with raw costs **0.992 to 1.001**: the two venues agree to within a cent or less.
+- The false pairs are all below the new default (scores 0.61 to 0.73): "X and JD Vance be the ticket", Ohio primary, Iowa caucus, and "Democratic nominee for the Senate" (Chris Van Hollen), which showed a raw cost of 0.326 and +104%/yr. That "gap" is again two different events, and it would have been reported as the best opportunity had the threshold stayed at 0.60.
+- Best correct pair: Mark Kelly, 0.988, about +0.6%/yr gross. Kalshi's fee alone (assumed 0.07 p (1 - p) per contract) takes roughly half a cent per leg at low prices, so net is negative before slippage.
+- Not checked by hand: the 15 to 21 pairs scoring between 0.85 and 0.95, which the diagnostic's top list does not show.
+
 **Not yet verified:** the new threshold on categories other than politics, and whether any pair beats the fees on a short horizon. The 2028 window is the only one that has produced correct pairs so far.
 
 ## Still uncertain
