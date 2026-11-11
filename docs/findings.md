@@ -91,7 +91,7 @@ Lesson: a sanity check on counts (`n_quotes > 0` per venue) catches this class o
 
 ## Next: measure how long gaps last
 
-`scripts/log_arb.py` and `scripts/analyze_log.py` answer the open question about time dynamics. They are tested on simulated data only: the first live run will be the real test of the whole pipeline, including cross-venue matching on real titles.
+`scripts/log_arb.py` and `scripts/analyze_log.py` answer the open question about time dynamics. The first live run is written up in [`results.md`](results.md): one episode, a valid basket whose edge is about the size of the cost of capital.
 
 ## Reproduce locally
 

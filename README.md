@@ -81,7 +81,24 @@ A gap that exists for two seconds cannot be traded by hand. The logger samples b
 
 `analyze_log.py` groups consecutive sightings of the same legs into **episodes** (a gap of more than 2.5 intervals ends an episode) and reports the share of cycles with an opportunity, episode durations (a lower bound: one sighting counts as one interval), the share seen only once, and the best episodes. An episode seen once lasted less than the interval.
 
-A failed request skips the cycle instead of stopping the logger. Keep the interval at 30 s or more: each cycle makes a handful of public requests per venue.
+A failed request skips the cycle instead of stopping the logger (connection resets and read timeouts happen a few times per hour). Keep the interval at 30 s or more: each cycle makes a handful of public requests per venue.
+
+Practical notes:
+
+- The process stops while the computer sleeps, so use `caffeinate -i python scripts/log_arb.py ...` on a Mac, keep it plugged in, and stop it with `Ctrl-C` before leaving (a clean stop makes gaps easy to recognise). Sessions append to the same CSV files.
+- Run `analyze_log.py` from a second terminal window: reading the CSVs while the logger writes is safe.
+- Gaps longer than 2.5 intervals split episodes, so durations are lower bounds.
+- The logger prints a warning when a venue returns zero usable quotes (a parser or endpoint problem).
+
+## Results so far (interim)
+
+First live run: 128 cycles over a 9 hour window, 1 apparent opportunity episode, none cross-venue.
+
+- The episode was a Polymarket basket ("Discord IPO Closing Market Cap", 8 exhaustive outcomes, asks summing to 0.958) that lasted at least 40 minutes.
+- It is structurally valid, but the net gain is about 3.6% over roughly 13.7 months, close to the time value of money, and selling the legs back early would cost more than the gain. So it is not exploitable.
+- On the earlier snapshot, 0 of 1,512 Kalshi markets had YES ask + NO ask below 1.
+
+Details and caveats: [`docs/results.md`](docs/results.md), [`docs/findings.md`](docs/findings.md).
 
 ## Use it as a library
 
@@ -131,6 +148,7 @@ docs/           theory, architecture, data sources
 | [`docs/theory.md`](docs/theory.md) | contingent-claim view, formulas, ROI, why edges are small |
 | [`docs/architecture.md`](docs/architecture.md) | modules, data model, matching algorithm, how to add a venue |
 | [`docs/apis.md`](docs/apis.md) | endpoints, fields used, fee assumptions, rate limits |
+| [`docs/faq.md`](docs/faq.md) | short answers: mirrored books, exclusive vs exhaustive, ROI definitions, what is not validated |
 | [`docs/results.md`](docs/results.md) | **first live run of the logger**: counts, the one episode found, why it is not exploitable |
 | [`docs/findings.md`](docs/findings.md) | **live test results**: what the real APIs return, bugs found and fixed, what is still untested |
 
@@ -147,10 +165,14 @@ docs/           theory, architecture, data sources
 
 ## Roadmap
 
-- [ ] Order-book depth and size-weighted fills
+- [ ] Order-book depth and size-weighted fills (the main missing piece: results ignore size)
 - [x] Snapshot logging and opportunity duration (`log_arb.py`, `analyze_log.py`): written and tested on simulated data, **not yet run on live data**
 - [ ] Calibration analysis (Brier score, reliability diagram) on resolved markets
 - [ ] Kelly sizing against a model probability
+
+## Development
+
+I defined the questions and the checks, validated the parsers against live API responses, ran the logger and analysed its output. An AI assistant (Claude) helped write the code and documentation, and appears as a contributor in the git history.
 
 ## License
 
