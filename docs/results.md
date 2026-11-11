@@ -1,18 +1,18 @@
 # Results of the first live run
 
-Interim results: the logger was still running when this was written.
+Interim results, updated 2026-11-11 16:43: the logger was still running when this was written.
 
 | | |
 |---|---|
-| Window | 2026-11-10 16:49 to 2026-11-11 02:02 (New York time), interval 60 s, 2 pages per endpoint |
-| Cycles recorded | **128**, about 2.1 hours of sampling in a 9.2 hour window (the laptop slept in between) |
-| Cycles with at least one apparent opportunity | 31.2% (40 of 128) |
+| Window | 2026-11-10 16:49 to 2026-11-11 16:43 (New York time), interval 60 s, 2 pages per endpoint |
+| Cycles recorded | **261**, about 4.4 hours of sampling in a 24 hour window (the laptop slept or was offline in between) |
+| Cycles with at least one apparent opportunity | 15.3% (40 of 261), all of them from the single episode below: **0 opportunities in the other 221 cycles** |
 | Episodes | **1**, kind `basket_buy`, none cross-venue |
 | Duration | at least 2,399 s (40 consecutive sightings) |
 | Best profit per set | $0.0041 after 0.5 cent slippage per leg and fees |
-| Skipped cycles | at least 4 seen in the console (connection resets, read timeouts), not stored in the CSV |
+| Skipped cycles | several per hour seen in the console, not stored in the CSV: DNS resolution failures and connection resets on the local network, and read timeouts |
 
-The cross-venue scan reported nothing in this window. Its matching quality on real titles is still unmeasured.
+The cross-venue scan reported nothing in this window, including 133 additional cycles recorded since the first write-up (overnight and daytime). That cannot yet be read as "no cross-venue gap": the number of title pairs the matcher actually found on real data has not been measured, so a silent matcher and an efficient market look the same.
 
 ## The only episode: "Discord IPO Closing Market Cap" (Polymarket)
 

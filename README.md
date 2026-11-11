@@ -92,7 +92,7 @@ Practical notes:
 
 ## Results so far (interim)
 
-First live run: 128 cycles over a 9 hour window, 1 apparent opportunity episode, none cross-venue.
+First live run: 261 cycles over a 24 hour window (about 4.4 hours of actual sampling), 1 apparent opportunity episode, none cross-venue. The other 221 cycles had no opportunity at all.
 
 - The episode was a Polymarket basket ("Discord IPO Closing Market Cap", 8 exhaustive outcomes, asks summing to 0.958) that lasted at least 40 minutes.
 - It is structurally valid, but the net gain is about 3.6% over roughly 13.7 months, close to the time value of money, and selling the legs back early would cost more than the gain. So it is not exploitable.
