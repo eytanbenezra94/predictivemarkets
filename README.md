@@ -73,12 +73,13 @@ A 5 cent gap shrinks to about 1.5 cents after fees on a single market, which is 
 
 ## Opportunity logger
 
-A gap that exists for two seconds cannot be traded by hand. The logger samples both venues every `--interval` seconds, runs every scanner (intra-market on both venues plus cross-venue) and appends to two CSV files in `data/` (git-ignored):
+A gap that exists for two seconds cannot be traded by hand. The logger samples both venues every `--interval` seconds, runs every scanner (intra-market on both venues plus cross-venue) and appends to CSV files in `data/` (git-ignored). When an opportunity involves Polymarket legs, it also reads their **live order books** and logs the size available and the profit re-priced from the book (`--no-depth` disables this):
 
 | File | Content |
 |---|---|
 | `data/opportunities.csv` | one row per opportunity per cycle: timestamp, stable key (hash of the legs), kind, profit per set, ROI, legs |
 | `data/cycles.csv` | one row per cycle: number of quotes per venue and number of opportunities (the denominator) |
+| `data/depth.csv` | one row per flagged opportunity per cycle: size at the best price (min over Polymarket legs), profit recomputed from the live book, number of stale legs (live price worse than the logged one by more than 1 cent) |
 
 `analyze_log.py` groups consecutive sightings of the same legs into **episodes** (a gap of more than 2.5 intervals ends an episode) and reports the share of cycles with an opportunity, episode durations (a lower bound: one sighting counts as one interval), the share seen only once, and the best episodes. An episode seen once lasted less than the interval.
 
@@ -138,6 +139,7 @@ pm_arb/
   clients.py    Polymarket Gamma and Kalshi public endpoints + parsers
   scan.py       scanners combining clients and logic, plus `run_cycle`
   tracking.py   CSV logging, episodes and duration statistics
+  depth.py      order-book depth check of flagged Polymarket legs (CLOB /book)
   diagnose.py   matcher diagnostics (pairs found per threshold, raw cross-venue cost)
 scripts/        command-line scanners, logger and log analysis
 examples/       offline demo on synthetic quotes
@@ -162,13 +164,14 @@ docs/           theory, architecture, data sources
 - **Polymarket binary markets are one mirrored book**, so YES+NO arbitrage essentially never appears there. Real edges show up in **multi-outcome (negRisk) events** and **across venues**.
 - **Buy-side baskets assume exhaustive outcomes.** Venues do not always say so, so those results carry a warning.
 - **Cross-venue matching is heuristic** (title similarity + end date) and was **blind in the first run** (0 pairs, see above); its precision after the fix is unverified. A locked profit requires **identical resolution rules**: read both before acting.
-- **Top-of-book only.** No order-book depth, no latency, no atomic execution across venues, no cost of capital lock-up.
+- **Depth is checked for Polymarket legs only, and only for flagged opportunities, at level 1** (no walking of the book). Kalshi legs are not checked. No latency, no atomic execution across venues, no cost of capital lock-up.
 - **Fees matter.** 97% of the sampled Polymarket markets carry a taker fee; the formula is an assumption to verify (see findings). Kalshi's is also an assumption.
 - Educational code, not financial advice.
 
 ## Roadmap
 
-- [ ] Order-book depth and size-weighted fills (the main missing piece: results ignore size)
+- [x] Order-book depth check for Polymarket legs (`pm_arb/depth.py`, level 1 only)
+- [ ] Size-weighted fills (walk the book) and a Kalshi depth check
 - [x] Snapshot logging and opportunity duration (`log_arb.py`, `analyze_log.py`): written and tested on simulated data, **not yet run on live data**
 - [ ] Calibration analysis (Brier score, reliability diagram) on resolved markets
 - [ ] Kelly sizing against a model probability

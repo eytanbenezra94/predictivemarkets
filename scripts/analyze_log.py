@@ -10,7 +10,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from pm_arb import tracking  # noqa: E402
+from pm_arb import depth, tracking  # noqa: E402
 
 
 def fmt(x, pct=False, unit=""):
@@ -24,6 +24,7 @@ def main():
     ap.add_argument("--interval", type=float, default=60)
     ap.add_argument("--opps", default="data/opportunities.csv")
     ap.add_argument("--cycles", default="data/cycles.csv")
+    ap.add_argument("--depth", default="data/depth.csv")
     ap.add_argument("--top", type=int, default=10)
     a = ap.parse_args()
 
@@ -45,8 +46,14 @@ def main():
     print(f"\nTop {a.top} episodes by profit per set:")
     for e in eps[: a.top]:
         print(f"  ${e.max_profit:.4f}  {e.duration:6d}s  x{e.observations:<3d} {e.description[:110]}")
+    drows = tracking.read_csv(a.depth)
+    if drows:
+        print(f"\nOrder-book depth checks ({len(drows)} checks, Polymarket legs only; Kalshi legs are not checked):")
+        for d in depth.summarize_depth(drows)[: a.top]:
+            bp = "n/a (mixed venues)" if d["best_book_profit"] is None else f"{d['best_book_profit']:+.4f}"
+            print(f"  {d['kind']:12s} checks={d['checks']:3d} median size={d['median_min_size']:g} best live-book profit={bp} stale share={d['stale_share']:.0%}\n      {d['detail'][:150]}")
     print("\nReading guide: an episode seen once lasted less than the sampling interval, so a human or a slow bot")
-    print("could not have traded it. Profits are before depth limits: top-of-book quotes only.")
+    print("could not have traded it. Profits above are from top-of-book quotes; the depth section re-prices them from the live order book.")
 
 
 if __name__ == "__main__":

@@ -25,7 +25,15 @@ Fields used per market:
 | `closed`, `active`, `acceptingOrders`, `enableOrderBook` | closed, inactive or non-accepting markets are skipped (11.5% of nested markets are closed) |
 | `feesEnabled`, `feeSchedule` | `{rate, exponent, rebateRate, takerOnly}`; used for the taker fee |
 
+| `clobTokenIds` | JSON-encoded string `["<yes token>", "<no token>"]`, same order as `outcomes`; the YES token is what `/book` needs |
+
 `negRisk` events: exactly one outcome is meant to resolve YES. `negRiskAugmented` events can receive new outcomes later, so their listed asks can sum to 0.97 with no arbitrage: buy-side is skipped for them. `bestBid` is often missing on open markets.
+
+### Polymarket CLOB order book
+
+`GET https://clob.polymarket.com/book?token_id=<YES token>` (verified live 2026-11-12). Response keys: `market`, `asset_id`, `timestamp`, `hash`, `bids`, `asks`, `min_order_size`, `tick_size`, `neg_risk`, `last_trade_price`. Levels are `{"price": "0.001", "size": "2295397.22"}` (strings).
+
+**Ordering trap:** `bids` are sorted ascending and `asks` **descending**, so the best price is the *last* element of each list. A reader that takes element 0 sees 0.999 as the best ask. `pm_arb/depth.py` takes `max` / `min` and never relies on order. On the sampled market the book agreed with Gamma's `bestBid` / `bestAsk` (0.001 / 0.002).
 
 ## Kalshi (trade API)
 

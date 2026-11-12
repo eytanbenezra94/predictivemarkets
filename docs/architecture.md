@@ -25,6 +25,7 @@ The core rule: **everything that decides "is this an arbitrage" is pure and offl
 | `pm_arb/matching.py` | `similarity` (token Jaccard + sequence ratio), `dates_compatible`, `match_markets` (greedy one-to-one) |
 | `pm_arb/clients.py` | `get_json` with retry, parsers (`parse_polymarket_market`, `parse_kalshi_market`; both return `None` for closed, inactive, multivariate or non-binary markets), page iterators |
 | `pm_arb/scan.py` | `scan_intra_kalshi`, `scan_intra_polymarket`, `scan_cross`, `event_basket`, `run_cycle` (one full scan on fetched data) |
+| `pm_arb/depth.py` | `poly_tokens` (market id to YES token), `parse_book`, `check` / `check_all` (size at best price, profit re-priced from the live book, stale legs), `summarize_depth` |
 | `pm_arb/diagnose.py` | `match_stats` (pairs per threshold), `raw_cross_sum` (cheapest cross-venue cost before frictions), `annualized_yield` (gross yield per year of a basket held to its end date) |
 | `pm_arb/tracking.py` | `to_rows`, CSV append/read, `episodes` (group sightings by legs), `summarize` |
 | `scripts/` | CLI entry points that print a ranked report |

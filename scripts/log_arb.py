@@ -19,7 +19,7 @@ import requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from pm_arb import clients, tracking  # noqa: E402
+from pm_arb import clients, depth, tracking  # noqa: E402
 from pm_arb.scan import run_cycle  # noqa: E402
 
 
@@ -35,6 +35,8 @@ def main():
     ap.add_argument("--threshold", type=float, default=0.85)
     ap.add_argument("--out", default="data/opportunities.csv")
     ap.add_argument("--cycles-out", default="data/cycles.csv")
+    ap.add_argument("--depth-out", default="data/depth.csv")
+    ap.add_argument("--no-depth", action="store_true", help="skip the order-book depth check of flagged opportunities")
     a = ap.parse_args()
 
     n = 0
@@ -49,6 +51,11 @@ def main():
                 ts = time.time()
                 tracking.append_opportunities(a.out, tracking.to_rows(opps, ts))
                 tracking.append_cycle(a.cycles_out, ts, n_poly, n_kal, len(opps))
+                if opps and not a.no_depth:
+                    for o, rep in depth.check_all(opps, depth.poly_tokens(poly_events), a.slippage):
+                        tracking.append_depth(a.depth_out, ts, tracking.opp_key(o), rep)
+                        bp = "n/a" if rep["book_profit"] is None else f"{rep['book_profit']:.4f}"
+                        print(f"    depth: {o.kind} logged {o.profit_per_set:.4f} -> live-book {bp}, min size {rep['min_size']:g}, stale legs {rep['stale_legs']}/{rep['poly_legs']}", flush=True)
                 print(f"[{time.strftime('%H:%M:%S')}] polymarket={n_poly} kalshi={n_kal} opportunities={len(opps)}", flush=True)
                 if n_poly == 0 or n_kal == 0:
                     print("WARNING: a venue returned zero usable quotes: the parser or the endpoint probably changed", file=sys.stderr, flush=True)

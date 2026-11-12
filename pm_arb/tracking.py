@@ -17,6 +17,7 @@ from .models import Opportunity
 
 OPP_FIELDS = ["ts", "key", "kind", "profit", "roi", "n_legs", "description", "caveat"]
 CYCLE_FIELDS = ["ts", "n_polymarket", "n_kalshi", "n_opportunities"]
+DEPTH_FIELDS = ["ts", "key", "kind", "profit", "book_profit", "min_size", "poly_legs", "legs", "stale_legs", "detail"]
 
 
 def opp_key(opp: Opportunity) -> str:
@@ -52,6 +53,13 @@ def _append(path: str, fields: list[str], rows: list[dict]) -> None:
 
 def append_opportunities(path: str, rows: list[dict]) -> None:
     _append(path, OPP_FIELDS, rows)
+
+
+def append_depth(path: str, ts: float, key: str, report: dict) -> None:
+    row = {"ts": int(ts), "key": key, **{k: report[k] for k in DEPTH_FIELDS if k in report}}
+    for k in ("profit", "book_profit"):
+        row[k] = "" if row.get(k) is None else round(row[k], 6)
+    _append(path, DEPTH_FIELDS, [row])
 
 
 def append_cycle(path: str, ts: float, n_poly: int, n_kalshi: int, n_opps: int) -> None:

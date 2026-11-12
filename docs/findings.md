@@ -14,7 +14,7 @@ Real responses from both venues, captured on **2026-11-10**. This page records w
 | Item | Why it matters |
 |---|---|
 | Cross-venue scan end to end | needs both datasets in one process; the matching quality on real titles is **unmeasured** |
-| Polymarket CLOB order books (`/book`) and `/fee-rate` | depth and the exact fee are unverified |
+| Polymarket `/fee-rate` | the exact fee is unverified (the `/book` format is verified, see `apis.md`) |
 | Kalshi pagination beyond page 1 (`cursor` was present) | later pages may behave differently |
 | Kalshi `mve_filter` query parameter | the request failed for network reasons, so it is neither confirmed nor ruled out |
 | Behaviour over time | no measure of how long a gap lasts |
@@ -133,6 +133,17 @@ Two conclusions:
 - Not checked by hand: the 15 to 21 pairs scoring between 0.85 and 0.95, which the diagnostic's top list does not show.
 
 **Not yet verified:** the new threshold on categories other than politics, and whether any pair beats the fees on a short horizon. The 2028 window is the only one that has produced correct pairs so far.
+
+## Soccer baskets that looked like 17 to 19% (2026-11-12)
+
+Overnight logging produced two episodes far larger than anything before, both on Polymarket three-way soccer events and both lasting exactly 5 cycles:
+
+| Event | Basket | Logged edge | Why it is suspect |
+|---|---|---|---|
+| Armenia vs Cyprus | sell all 3 outcomes | $0.173 per set | logged bids 0.31 (Armenia) + 0.27 (draw) + 0.64 (Cyprus) = **1.22**: a probability above 100% for an exhaustive set, unchanged for the whole episode |
+| Türkiye vs Belgium | buy all 3 outcomes | $0.186 per set | asks summing to about 0.81, same duration |
+
+The log only holds top-of-book prices, with no size, so it cannot say whether these were stale Gamma fields or tiny resting orders. That is what `pm_arb/depth.py` was written to answer: from now on, each flagged opportunity is followed by a read of the live CLOB books (size at the best price, profit recomputed from the book, stale legs) in `data/depth.csv`. **Status: the two episodes remain unexplained; the depth check has been tested on a real book payload and on synthetic cases, and has not yet run inside a live logger cycle.**
 
 ## Still uncertain
 

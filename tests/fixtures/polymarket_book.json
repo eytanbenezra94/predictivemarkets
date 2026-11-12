@@ -1,0 +1,16 @@
+{
+  "_note": "Real excerpt of GET https://clob.polymarket.com/book?token_id=<YES token> (Fed decision market), captured 2026-11-12. Real bids/asks are trimmed to a few levels. NOTE the order: bids ascending, asks DESCENDING, so the best price is the LAST element.",
+  "market": "0x...",
+  "asset_id": "17640596861394454242836532536014033416733783473450136742726948856144855149507",
+  "bids": [{"price": "0.001", "size": "2295397.22"}],
+  "asks": [
+    {"price": "0.999", "size": "21019053.7"},
+    {"price": "0.998", "size": "8668.17"},
+    {"price": "0.997", "size": "64356.64"},
+    {"price": "0.003", "size": "241632.85"},
+    {"price": "0.002", "size": "157782.02"}
+  ],
+  "min_order_size": "5",
+  "tick_size": "0.001",
+  "neg_risk": true
+}

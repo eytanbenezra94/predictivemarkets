@@ -373,3 +373,93 @@ def test_annualized_yield():
     assert 0.005 < y < 0.006
     assert annualized_yield(0.99, "2025-01-01T00:00:00Z", now) is None
     assert annualized_yield(0.99, None, now) is None
+
+
+# --- depth check ---
+import json  # noqa: E402
+
+from pm_arb import depth  # noqa: E402
+from pm_arb.models import Opportunity  # noqa: E402
+
+
+def _fixture(name):
+    with open(os.path.join(os.path.dirname(__file__), "fixtures", name)) as f:
+        return json.load(f)
+
+
+def test_parse_book_ignores_level_order():
+    b = depth.parse_book(_fixture("polymarket_book.json"))
+    # real book: asks are listed descending, the best ask is the last element
+    assert b["ask"] == 0.002 and b["ask_size"] == 157782.02
+    assert b["bid"] == 0.001 and b["bid_size"] == 2295397.22
+
+
+def test_parse_book_empty_side():
+    b = depth.parse_book({"bids": [], "asks": [{"price": "0.5", "size": "10"}, {"price": "0.5", "size": "5"}]})
+    assert b["bid"] is None and b["bid_size"] == 0.0
+    assert b["ask"] == 0.5 and b["ask_size"] == 15.0
+
+
+def test_poly_tokens_reads_json_string():
+    ev = {"markets": [
+        {"id": "7", "outcomes": '["Yes", "No"]', "clobTokenIds": '["111", "222"]'},
+        {"id": "8", "outcomes": '["Over", "Under"]', "clobTokenIds": '["333", "444"]'},
+    ]}
+    assert depth.poly_tokens([ev]) == {"7": "111"}
+
+
+def _sell_basket():
+    bids = [("a", "A wins", 0.31), ("b", "Draw", 0.27), ("c", "C wins", 0.64)]
+    from pm_arb.arb import basket_sell
+    return basket_sell(bids, slippage=0.0, venue="polymarket")
+
+
+def test_depth_confirms_thin_but_real_book():
+    opp = _sell_basket()
+    tokens = {"a": "ta", "b": "tb", "c": "tc"}
+    books = {
+        "ta": {"bid": 0.31, "bid_size": 12.0, "ask": 0.33, "ask_size": 5.0},
+        "tb": {"bid": 0.27, "bid_size": 40.0, "ask": 0.29, "ask_size": 5.0},
+        "tc": {"bid": 0.64, "bid_size": 3.0, "ask": 0.66, "ask_size": 5.0},
+    }
+    rep = depth.check(opp, tokens, books)
+    assert rep["min_size"] == 3.0 and rep["stale_legs"] == 0
+    assert rep["book_profit"] == pytest.approx(0.22)
+
+
+def test_depth_flags_stale_quotes():
+    opp = _sell_basket()
+    tokens = {"a": "ta", "b": "tb", "c": "tc"}
+    books = {  # the live book has moved: the logged bids no longer exist
+        "ta": {"bid": 0.20, "bid_size": 12.0, "ask": 0.22, "ask_size": 5.0},
+        "tb": {"bid": 0.25, "bid_size": 40.0, "ask": 0.27, "ask_size": 5.0},
+        "tc": {"bid": None, "bid_size": 0.0, "ask": 0.60, "ask_size": 5.0},
+    }
+    rep = depth.check(opp, tokens, books)
+    assert rep["stale_legs"] == 3 and rep["min_size"] == 0.0
+    assert rep["book_profit"] is None  # one leg has no bid at all
+
+
+def test_depth_skips_non_polymarket_and_mixed_profit():
+    leg = Leg("kalshi", "k1", "K", "BUY_NO", 0.4)
+    opp = Opportunity("cross_venue", "x", (leg, Leg("polymarket", "p1", "P", "BUY_YES", 0.5)), 0.05, 0.05)
+    assert depth.check(opp, {}, {}) is None
+    rep = depth.check(opp, {"p1": "tp"}, {"tp": {"bid": 0.48, "bid_size": 9.0, "ask": 0.5, "ask_size": 9.0}})
+    assert rep["poly_legs"] == 1 and rep["legs"] == 2 and rep["book_profit"] is None
+
+
+def test_check_all_survives_fetch_errors():
+    import requests
+    opp = _sell_basket()
+    def boom(tok):
+        raise requests.ConnectionError("down")
+    assert depth.check_all([opp], {"a": "ta", "b": "tb", "c": "tc"}, fetch=boom) == []
+
+
+def test_summarize_depth():
+    rows = [
+        {"key": "k", "kind": "basket_sell", "book_profit": "0.2", "min_size": "5", "stale_legs": "0", "detail": "d"},
+        {"key": "k", "kind": "basket_sell", "book_profit": "", "min_size": "1", "stale_legs": "2", "detail": "d"},
+    ]
+    s = depth.summarize_depth(rows)[0]
+    assert s["checks"] == 2 and s["best_book_profit"] == 0.2 and s["stale_share"] == 0.5
