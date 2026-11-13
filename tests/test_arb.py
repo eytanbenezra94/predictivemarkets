@@ -463,3 +463,40 @@ def test_summarize_depth():
     ]
     s = depth.summarize_depth(rows)[0]
     assert s["checks"] == 2 and s["best_book_profit"] == 0.2 and s["stale_share"] == 0.5
+
+
+# --- network retries ---
+def test_get_json_retries_connection_reset(monkeypatch):
+    import requests
+    from pm_arb import clients
+
+    calls = {"n": 0}
+
+    class Resp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return {"ok": True}
+
+    def fake_get(url, params=None, timeout=None):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise requests.ConnectionError("Connection reset by peer")
+        return Resp()
+
+    monkeypatch.setattr(clients._session, "get", fake_get)
+    monkeypatch.setattr(clients.time, "sleep", lambda s: None)
+    assert clients.get_json("http://x") == {"ok": True}
+    assert calls["n"] == 3
+
+
+def test_get_json_raises_after_last_retry(monkeypatch):
+    import requests
+    from pm_arb import clients
+
+    def always_timeout(url, params=None, timeout=None):
+        raise requests.Timeout("read timed out")
+
+    monkeypatch.setattr(clients._session, "get", always_timeout)
+    monkeypatch.setattr(clients.time, "sleep", lambda s: None)
+    with pytest.raises(requests.Timeout):
+        clients.get_json("http://x")

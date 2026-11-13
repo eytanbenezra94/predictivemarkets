@@ -21,8 +21,20 @@ _session = requests.Session()
 
 
 def get_json(url: str, params: Optional[dict] = None, retries: int = 3) -> Any:
+    """GET + JSON with retries on 429, 5xx and transient network errors.
+
+    A connection reset or a read timeout is retried with a short backoff (a reused keep-alive
+    connection that the server closed is the usual cause); the last failure is raised.
+    """
+    resp = None
     for attempt in range(retries):
-        resp = _session.get(url, params=params, timeout=20)
+        try:
+            resp = _session.get(url, params=params, timeout=20)
+        except (requests.ConnectionError, requests.Timeout):
+            if attempt == retries - 1:
+                raise
+            time.sleep(1 + attempt)
+            continue
         if resp.status_code == 429 or resp.status_code >= 500:
             time.sleep(2 ** attempt)
             continue

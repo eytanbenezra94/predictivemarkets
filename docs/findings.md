@@ -145,6 +145,12 @@ Overnight logging produced two episodes far larger than anything before, both on
 
 The log only holds top-of-book prices, with no size, so it cannot say whether these were stale Gamma fields or tiny resting orders. That is what `pm_arb/depth.py` was written to answer: from now on, each flagged opportunity is followed by a read of the live CLOB books (size at the best price, profit recomputed from the book, stale legs) in `data/depth.csv`. **Status: the two episodes remain unexplained; the depth check has been tested on a real book payload and on synthetic cases, and has not yet run inside a live logger cycle.**
 
+## Network errors during the overnight run (2026-11-13)
+
+A pasted excerpt of the logger output (68 lines between 18:51 and 13:10, so only part of it) shows **44 skipped cycles against 24 successful ones**: 29 `ConnectionResetError(54)` (Connection reset by peer), 13 read timeouts on `api.elections.kalshi.com`, 2 on `gamma-api.polymarket.com`. Every successful line in the excerpt has `opportunities=0`.
+
+Cause of the resets: the shared `requests.Session` reuses keep-alive connections, and a server that closed an idle connection produces a reset on the next request. `get_json` retried only 429 and 5xx statuses, never network errors, so one reset cost a whole cycle. It now retries connection errors and timeouts (3 attempts, 1 to 2 s backoff). Skipped cycles are not written to `cycles.csv`, which makes them look like gaps: episodes are split by a gap above 2.5 intervals, and the share of cycles with an opportunity is computed over the cycles that did run. The real skip rate of a run is `1 - cycles / (duration / interval)` from `analyze_log.py`'s period and cycle count.
+
 ## Still uncertain
 
 - **Polymarket fee formula.** Public sources disagree on whether there is an extra factor `p` and how `exponent` enters. `schedule_fee` uses `rate * (p * (1 - p)) ** exponent`, which reproduces the documented $1.25 per 100 contracts at 50c for rate 0.05. Check `clob.polymarket.com/fee-rate` before relying on a fee-sensitive result.
